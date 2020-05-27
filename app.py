@@ -32,23 +32,27 @@ class DB: # https://stackoverflow.com/questions/207981/how-to-enable-mysql-clien
     def __init__(self):
         conn = None
 
-    def connect(self):
-        self.conn = MySQLdb.connect(port=3548,
-                     host='ix-dev.cs.uoregon.edu',
-                     user='cis422-group7',
-                     password='Group7',
-                     db='project_1',
-                     charset='utf8')
+   def connect(self):
+        self.conn =  MySQLdb.connect(
+                     host='basketball9530.mysql.pythonanywhere-services.com',
+                     user='basketball9530',
+                     passwd='hello123',
+                     database='basketball9530$default',
+                     #port=3306,
+                     #charset='utf8'
+                     )
 
     def query(self, sql):
         self.conn.ping(True)
         try:
             cursor = self.conn.cursor()
             cursor.execute(sql)
+            self.conn.commit()
         except (AttributeError, MySQLdb.OperationalError):
             self.connect()
             cursor = self.conn.cursor()
             cursor.execute(sql)
+            self.conn.commit()
         return cursor
 
     def get(self, sql):
@@ -67,7 +71,7 @@ class DB: # https://stackoverflow.com/questions/207981/how-to-enable-mysql-clien
         return results
 
 db = DB()
-db.connect() 
+db.connect()
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -152,7 +156,7 @@ def display():
         username = form.username.data
 
         tab = form.tab.data
-        
+
         print("Getting location data for: ", username)
 
         sql = "SELECT latitude, longitude, date, time, time_at_location FROM user_info WHERE user_id LIKE '%s';" % (username)
@@ -316,4 +320,4 @@ def error_400(error):
 
 
 if __name__ == "__main__":
-    app.run(debug=True)  
+    app.run(debug=True)
