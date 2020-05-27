@@ -1,0 +1,14 @@
+<!--
+___register.html___
+Registration webpage. Contains a form that is handled by app.py on submission for users to create an account.
+-->
+<h1>Welcome! Please create an account.</h1>
+
+<form method="POST" action="/register">
+  {{ form.csrf_token }}
+  {{ form.username.label }} {{ form.username(size=20) }}
+  {{ form.password.label }} {{ form.password(size=20) }}
+  <input type="submit" value="Register">
+</form>
+
+<p> <a href="/login">Already registered? Log in here!</a></p>

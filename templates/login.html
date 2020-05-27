@@ -1,0 +1,16 @@
+<!--
+___login.html___
+Login webpage. Contains a form that is handled by app.py on submission for users to log in.
+-->
+<h1>Login</h1>
+
+<form method='POST' action='/login/'>
+  {{ form.csrf_token }}
+  {{ form.username.label }} {{ form.username(size=20) }}
+  {{ form.password.label }} {{ form.password(size=20) }}
+  {{ form.remember_me.label }} {{ form.remember_me(size=20) }}
+<input type="submit" value="Login">
+</form>
+
+<p> <a href="/register"> New user? Register here!</a></p>
+<p> <a href="/display"> Find past locations here!</a></p>

@@ -1,0 +1,21 @@
+<!--
+___display.html___
+Display webpage. Contains a form that is handled by app.py on submission for users to retrieve their location data from the database.
+Data is output as CSV or TXT files.
+-->
+
+<h1>Location History</h1>
+<!--
+creates a text box that the user puts their user name into
+it then sends that username ID to the python file to perform the query to the database
+-->
+<form method='POST'>
+  {{ form.csrf_token }}
+  {{ form.username.label }} {{ form.username(size=20) }}
+  {{ form.tab.label }} {{ form.tab(size=20) }}
+<input type="submit" value="Search">
+</form>
+
+<p>Search your username to get location data as a CSV file. Import that file at maps.co to view your data on a map.</p>
+
+<p> <a href="/login"> Log in here!</a></p>
