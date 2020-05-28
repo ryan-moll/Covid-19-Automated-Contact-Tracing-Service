@@ -32,12 +32,12 @@ class DB: # https://stackoverflow.com/questions/207981/how-to-enable-mysql-clien
     def __init__(self):
         conn = None
 
-   def connect(self):
+    def connect(self):
         self.conn =  MySQLdb.connect(
-                     host='basketball9530.mysql.pythonanywhere-services.com',
-                     user='basketball9530',
+                     host='Group7.mysql.pythonanywhere-services.com',
+                     user='Group7',
                      passwd='hello123',
-                     database='basketball9530$default',
+                     database='Group7$project_2',
                      #port=3306,
                      #charset='utf8'
                      )
@@ -159,7 +159,7 @@ def display():
 
         print("Getting location data for: ", username)
 
-        sql = "SELECT latitude, longitude, date, time, time_at_location FROM user_info WHERE user_id LIKE '%s';" % (username)
+        sql = "SELECT latitude, longitude, date, time, time_at_location FROM user_info WHERE name LIKE '%s';" % (username)
         results = db.get(sql)
         if results:
             if tab:
@@ -191,6 +191,8 @@ def display():
 
 @app.route('/login/', methods=('GET', 'POST'))
 def login():
+    if current_user.is_authenticated: # If the user is already logged in, send them to the main page
+        return render_template('location.html'), 200
     form = LoginForm()
     emsg = None
     if form.validate_on_submit():
@@ -248,7 +250,7 @@ def send():
     # request form from website containing user information and create a dictionary using it
     data = request.form.to_dict(flat=False)
     # query the database for entries from a particular user
-    sql = "SELECT latitude, longitude, date, time, time_at_location FROM user_info WHERE user_id LIKE '%s';" % (current_user.username)
+    sql = "SELECT latitude, longitude, date, time, time_at_location FROM user_info WHERE name LIKE '%s';" % (current_user.username)
     # select most recent entry
     results = db.get(sql)
 
@@ -269,6 +271,7 @@ def send():
     u_id = current_user.username
     date = data.get('date')[0]
     time = data.get('time')[0]
+    status = 0 # 0 indicates that the user is not infected. They can change this if they are.
 
     # if the newly received location and the newest entry in the database are within a meter
     # Calculates the time difference between the newly received entry
@@ -287,12 +290,10 @@ def send():
 
         #timedelta to minutes src https://stackoverflow.com/questions/14190045/how-do-i-convert-datetime-timedelta-to-minutes-hours-in-python/43965102
         time_at = int(past[4]) + (difference.total_seconds() % 3600)/60 # make it a difference between date's time and past's time
-        TSI = 5
     else:
         time_at = 0
-        TSI = 5
     # send new entry with all updated variables to the
-    sql = "INSERT INTO user_info VALUES ('%s', '%s',  '%s',  '%s', '%s', '%s', '%s')" % (u_id, date, time, lati, longi, time_at, TSI)
+    sql = "INSERT INTO user_info VALUES ('%s', '%s',  '%s',  '%s', '%s', '%s', '%s')" % (u_id, date, time, lati, longi, time_at, status)
     db.query(sql)
 
     return render_template('location.html'), 200
