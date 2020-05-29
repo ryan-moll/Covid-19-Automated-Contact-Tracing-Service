@@ -134,11 +134,8 @@ def display():
     form = DisplayForm()
     if form.validate_on_submit():
         username = form.username.data
-
         tab = form.tab.data
-
         print("Getting location data for: ", username)
-
         sql = "SELECT latitude, longitude, date, time, time_at_location FROM user_info WHERE name LIKE '%s';" % (username)
         results = db.get(sql)
         if results:
@@ -352,29 +349,18 @@ def error_400(error):
 #__________HELPER FUNCTIONS__________
 # Given a latitude and longitude it adds random numbers to specified positions to obscure the actual data
 def salt(lat, lng):
+    #1. Remove '.' and '-'. Note where they are.
+    #2. Chop lat and lng down to float(10,7) length
+    #3. Add the last number to every other number.
+    #4. Restore the '.' and '-'
     return [lat, lng]
-    la = str(lat)
-    lo = str(lng)
-    laPos = la.find('.')
-    loPos = lo.find('.')
-    la = la.replace('.', '')
-    lo = lo.replace('.', '')
-    la = la[0] + str(randrange(10)) + la[1] + '.' + la[2] + str(randrange(10)) + la[3] + str(randrange(10)) + la[4:] + str(laPos)
-    lo = lo[0] + str(randrange(10)) + lo[1] + '.' + lo[2] + str(randrange(10)) + lo[3] + str(randrange(10)) + lo[4:] + str(loPos)
-    return [float(la), float(lo)]
 
 # Given a salted latitude and longitude, return the actual data
 def unsalt(lat, lng):
+    #1. Remove '.' and '-'. Note where they are.
+    #2. Subtract the last number from every other number.
+    #3. Restore the '.' and '-'
     return [lat, lng]
-    la = str(lat).replace('.', '')
-    lo = str(lng).replace('.', '')
-    laPos = int(la[-1])
-    loPos = int(lo[-1])
-    la = la[0] + la[2:4] + la[5] + la[7:-1]
-    lo = lo[0] + lo[2:4] + lo[5] + lo[7:-1]
-    la = la[:laPos] + '.' + la[laPos:]
-    lo = lo[:loPos] + '.' + lo[loPos:]
-    return [float(la), float(lo)]
 
 def create_user(usr, pas, uid=None):
     if not uid:
@@ -392,9 +378,10 @@ def get_user(usr):
 #__________STARTUP__________
 # TODO: How much of this can be moved to main?
 local = False
-if sys.argv[1] == "local":
-    print("Running on local...")
-    local = True
+if len(sys.argv) > 1:
+    if sys.argv[1] == "local":
+        print("Running on local...")
+        local = True
 
 db = DB()
 db.connect()
