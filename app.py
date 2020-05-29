@@ -26,18 +26,10 @@ from wtforms.validators import DataRequired
 from datetime import *
 from math import isclose
 
-#TODO: Organize top section of code
-app = Flask(__name__)
-local = False
-print(sys.argv)
-if sys.argv[1] == "local":
-    print("Running on local...")
-    local = True
-app.secret_key = 'abc'
+#__________CLASSES__________
 class DB: # https://stackoverflow.com/questions/207981/how-to-enable-mysql-client-auto-re-connect-with-mysqldb
     def __init__(self):
         conn = None
-
     def connect(self):
         if local == False:
             self.conn =  MySQLdb.connect(
@@ -82,41 +74,6 @@ class DB: # https://stackoverflow.com/questions/207981/how-to-enable-mysql-clien
                 results = r.fetch_row(maxrows=0)
         return results
 
-db = DB()
-db.connect()
-
-login_manager = LoginManager()
-login_manager.init_app(app)
-login_manager.login_view = 'login'
-userObjects = {}
-
-# Handles routing to the home page
-@app.route("/")
-@app.route("/index")
-@login_required
-def index():
-    return render_template('location.html'), 200
-
-@app.route('/logout')
-@login_required
-def logout():
-    logout_user()
-    return redirect(url_for('login'))
-
-def create_user(usr, pas, uid=None):
-    if not uid:
-        uid = uuid.uuid4()
-    user = User([usr, pas, uid])
-    userObjects[uid] = user
-    return user
-
-def get_user(usr):
-    for user in userObjects.values():
-        if user.username == usr:
-            return user
-    return None
-
-
 class User(UserMixin): # Base login system derived from code here: https://flask-login.readthedocs.io/en/latest/
     def __init__(self, user):
         self.username = user[0]
@@ -131,36 +88,17 @@ class User(UserMixin): # Base login system derived from code here: https://flask
     def get_id(self):
         return self.id
 
-#TODO: Change the indices between lat and long
-# Given a latitude and longitude it adds random numbers to specified positions to obscure the actual data
-def salt(lat, lng):
-    la = str(lat).replace('.', '')
-    lo = str(lng).replace('.', '')
-    la = la[0] + str(randrange(10)) + la[1] + '.' + la[2] + str(randrange(10)) + la[3] + str(randrange(10)) + la[4:]
-    lo = lo[0] + str(randrange(10)) + lo[1] + '.' + lo[2] + str(randrange(10)) + lo[3] + str(randrange(10)) + lo[4:]
-    return [float(la), float(lo)]
-
-# Given a salted latitude and longitude, return the actual data
-def unsalt(lat, lng):
-    la = str(lat).replace('.', '')
-    lo = str(lng).replace('.', '')
-    la = la[0] + la[2:4] + '.' + la[5] + la[7:]
-    lo = lo[0] + lo[2:4] + '.' + lo[5] + lo[7:]
-    return [float(la), float(lo)]
-
-x = salt(123.456789, 987.654321)
-print(x[0], x[1])
-print(unsalt(x[0], x[1]))
-
+#__________FLASK__________
+app = Flask(__name__)
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+app.secret_key = 'abc' # Does this need to be something more secure?
 @login_manager.user_loader
 def load_user(user_id):
     if user_id not in userObjects:
         return None
     return userObjects[user_id]
-
-results = db.get("SELECT * FROM user_id")
-for user in results:
-    create_user(user[1], user[2], user[0])
 
 #__________FORMS__________
 #TODO: Make a superclass for all of these forms to inherit from to reduce redundancy
@@ -182,7 +120,14 @@ class DisplayForm(FlaskForm):
 class ReportForm(FlaskForm):
     username = StringField('user', validators=[DataRequired()])
 
-#__________PAGES__________
+#__________ROUTING__________
+# Handles routing to the home page
+@app.route("/")
+@app.route("/index")
+@login_required
+def index():
+    return render_template('location.html'), 200
+
 @app.route('/display/', methods=('GET', 'POST'))
 def display():
     # finds all data entries for a particular user ID
@@ -258,6 +203,12 @@ def login():
             return render_template('login.html', form=form, msg=emsg)
     else:
         return render_template('login.html', form=form)
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for('login'))
 
 @app.route('/register', methods=('GET', 'POST'))
 def register():
@@ -397,6 +348,62 @@ def error_401(error):
 @app.errorhandler(400)
 def error_400(error):
     return render_template('400.html'), 400
+
+#__________HELPER FUNCTIONS__________
+# Given a latitude and longitude it adds random numbers to specified positions to obscure the actual data
+def salt(lat, lng):
+    return [lat, lng]
+    la = str(lat)
+    lo = str(lng)
+    laPos = la.find('.')
+    loPos = lo.find('.')
+    la = la.replace('.', '')
+    lo = lo.replace('.', '')
+    la = la[0] + str(randrange(10)) + la[1] + '.' + la[2] + str(randrange(10)) + la[3] + str(randrange(10)) + la[4:] + str(laPos)
+    lo = lo[0] + str(randrange(10)) + lo[1] + '.' + lo[2] + str(randrange(10)) + lo[3] + str(randrange(10)) + lo[4:] + str(loPos)
+    return [float(la), float(lo)]
+
+# Given a salted latitude and longitude, return the actual data
+def unsalt(lat, lng):
+    return [lat, lng]
+    la = str(lat).replace('.', '')
+    lo = str(lng).replace('.', '')
+    laPos = int(la[-1])
+    loPos = int(lo[-1])
+    la = la[0] + la[2:4] + la[5] + la[7:-1]
+    lo = lo[0] + lo[2:4] + lo[5] + lo[7:-1]
+    la = la[:laPos] + '.' + la[laPos:]
+    lo = lo[:loPos] + '.' + lo[loPos:]
+    return [float(la), float(lo)]
+
+def create_user(usr, pas, uid=None):
+    if not uid:
+        uid = uuid.uuid4()
+    user = User([usr, pas, uid])
+    userObjects[uid] = user
+    return user
+
+def get_user(usr):
+    for user in userObjects.values():
+        if user.username == usr:
+            return user
+    return None
+
+#__________STARTUP__________
+# TODO: How much of this can be moved to main?
+local = False
+if sys.argv[1] == "local":
+    print("Running on local...")
+    local = True
+
+db = DB()
+db.connect()
+
+userObjects = {}
+
+results = db.get("SELECT * FROM user_id")
+for user in results:
+    create_user(user[1], user[2], user[0])
 
 #__________MAIN__________
 if __name__ == "__main__":
