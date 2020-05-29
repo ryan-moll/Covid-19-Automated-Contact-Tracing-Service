@@ -349,18 +349,41 @@ def error_400(error):
 #__________HELPER FUNCTIONS__________
 # Given a latitude and longitude it adds random numbers to specified positions to obscure the actual data
 def salt(lat, lng):
-    #1. Remove '.' and '-'. Note where they are.
-    #2. Chop lat and lng down to float(10,7) length
-    #3. Add the last number to every other number.
-    #4. Restore the '.' and '-'
-    return [lat, lng]
+    la = str(lat)
+    lo = str(lng)
+    laSplit = la.split('.')
+    loSplit = lo.split('.')
+    laSplit[1] = laSplit[1][:7]
+    loSplit[1] = loSplit[1][:7]
+    la = ".".join(laSplit)
+    lo = ".".join(loSplit)
+    laSum = int(la[-1])
+    loSum = int(lo[-1])
+    laList = list(la)
+    loList = list(lo)
+    for i in range(len(laList)-1):
+        if laList[i].isdigit():
+            laList[i] = str((int(laList[i])+laSum)%10)
+    for i in range(len(loList)-1):
+        if loList[i].isdigit():
+            loList[i] = str((int(loList[i])+loSum)%10)
+    return ["".join(laList), "".join(loList)]
 
 # Given a salted latitude and longitude, return the actual data
 def unsalt(lat, lng):
-    #1. Remove '.' and '-'. Note where they are.
-    #2. Subtract the last number from every other number.
-    #3. Restore the '.' and '-'
-    return [lat, lng]
+    la = str(lat)
+    lo = str(lng)
+    laList = list(la)
+    loList = list(lo)
+    laSub = int(la[-1])
+    loSub = int(lo[-1])
+    for i in range(len(laList)-1):
+        if laList[i].isdigit():
+            laList[i] = str((int(laList[i])+10-laSub)%10)
+    for i in range(len(loList)-1):
+        if loList[i].isdigit():
+            loList[i] = str((int(loList[i])+10-loSub)%10)
+    return ["".join(laList), "".join(loList)]
 
 def create_user(usr, pas, uid=None):
     if not uid:
