@@ -1,0 +1,15 @@
+<!--
+___report.html___
+Reporting webpage. Contains a form that is handled by app.py on submission for users to report when they have tested poritive for Covid-19 so that the system can alert other users.
+-->
+
+<h1>Report here if you have tested positive for Covid-19</h1>
+<!--
+creates a text box that the user puts their user name into
+it then sends that username ID to the python file to perform the query to the database
+-->
+<form method='POST'>
+  {{ form.csrf_token }}
+  {{ form.username.label }} {{ form.username(size=20) }}
+<input type="submit" value="Report">
+</form>

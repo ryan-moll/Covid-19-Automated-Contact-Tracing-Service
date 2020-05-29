@@ -4,8 +4,9 @@ Main driver code for the website. Handles page routing, HTTP requests, and user 
 Also manages the connection to the database for storing location data and user data.
 '''
 import uuid
-
+import sys
 import MySQLdb.cursors
+from random import randrange
 from flask import Flask, request, Response
 from flask import redirect, flash
 from flask import render_template, url_for
@@ -25,22 +26,33 @@ from wtforms.validators import DataRequired
 from datetime import *
 from math import isclose
 
+#TODO: Organize top section of code
 app = Flask(__name__)
-
+local = False
+print(sys.argv)
+if sys.argv[1] == "local":
+    print("Running on local...")
+    local = True
 app.secret_key = 'abc'
 class DB: # https://stackoverflow.com/questions/207981/how-to-enable-mysql-client-auto-re-connect-with-mysqldb
     def __init__(self):
         conn = None
 
     def connect(self):
-        self.conn =  MySQLdb.connect(
-                     host='Group7.mysql.pythonanywhere-services.com',
-                     user='Group7',
-                     passwd='hello123',
-                     database='Group7$project_2',
-                     #port=3306,
-                     #charset='utf8'
-                     )
+        if local == False:
+            self.conn =  MySQLdb.connect(
+                         host='Group7.mysql.pythonanywhere-services.com',
+                         user='Group7',
+                         passwd='hello123',
+                         database='Group7$project_2'
+                         )
+        else:
+            self.conn =  MySQLdb.connect(port=3548,
+                         host='ix-dev.cs.uoregon.edu',
+                         user='cis422-group7',
+                         password='Group7',
+                         db='project_1',
+                         charset='utf8')
 
     def query(self, sql):
         self.conn.ping(True)
@@ -119,6 +131,26 @@ class User(UserMixin): # Base login system derived from code here: https://flask
     def get_id(self):
         return self.id
 
+#TODO: Change the indices between lat and long
+# Given a latitude and longitude it adds random numbers to specified positions to obscure the actual data
+def salt(lat, lng):
+    la = str(lat).replace('.', '')
+    lo = str(lng).replace('.', '')
+    la = la[0] + str(randrange(10)) + la[1] + '.' + la[2] + str(randrange(10)) + la[3] + str(randrange(10)) + la[4:]
+    lo = lo[0] + str(randrange(10)) + lo[1] + '.' + lo[2] + str(randrange(10)) + lo[3] + str(randrange(10)) + lo[4:]
+    return [float(la), float(lo)]
+
+# Given a salted latitude and longitude, return the actual data
+def unsalt(lat, lng):
+    la = str(lat).replace('.', '')
+    lo = str(lng).replace('.', '')
+    la = la[0] + la[2:4] + '.' + la[5] + la[7:]
+    lo = lo[0] + lo[2:4] + '.' + lo[5] + lo[7:]
+    return [float(la), float(lo)]
+
+x = salt(123.456789, 987.654321)
+print(x[0], x[1])
+print(unsalt(x[0], x[1]))
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -130,24 +162,27 @@ results = db.get("SELECT * FROM user_id")
 for user in results:
     create_user(user[1], user[2], user[0])
 
+#__________FORMS__________
+#TODO: Make a superclass for all of these forms to inherit from to reduce redundancy
 class LoginForm(FlaskForm):
     username = StringField('user', validators=[DataRequired()])
     password = PasswordField('password', validators=[DataRequired()])
     remember_me = BooleanField('Remember Me')
     submit = SubmitField('log in')
 
-
 class RegistrationForm(FlaskForm):
     username = StringField('user', validators=[DataRequired()])
     password = PasswordField('password', validators=[DataRequired()])
     remember_me = BooleanField('Remember Me')
 
-
 class DisplayForm(FlaskForm):
     username = StringField('user', validators=[DataRequired()])
     tab = BooleanField('Tab delimited output file')
 
+class ReportForm(FlaskForm):
+    username = StringField('user', validators=[DataRequired()])
 
+#__________PAGES__________
 @app.route('/display/', methods=('GET', 'POST'))
 def display():
     # finds all data entries for a particular user ID
@@ -166,7 +201,10 @@ def display():
                 txt = "User I.D.\tDate\tTime\tLatitude\tLongitude\tTime at Location\n"
                 usr = get_user(username)
                 for entry in results:
-                    txt = txt + "%s\t%s\t%s\t%s\t%s\t%s\n" % (usr.id, entry[2], entry[3], entry[0]+0.00175, entry[1]+0.00175, entry[4])
+                    location = unsalt(entry[0], entry[1])
+                    lat = location[0]
+                    lng = location[1]
+                    txt = txt + "%s\t%s\t%s\t%s\t%s\t%s\n" % (usr.id, entry[2], entry[3], lat+0.00175, lng+0.00175, entry[4])
                 return Response(
                     txt,
                     mimetype="text/plain",
@@ -175,7 +213,10 @@ def display():
             else:
                 csvList = ["lat,lng,name,color,note"]
                 for entry in results:
-                    csvList.append(",".join(map(str,[entry[0]+0.00175, entry[1]+0.00175, '', "ff0000", ' '.join(map(str,entry[2:]))])))
+                    location = unsalt(entry[0], entry[1])
+                    lat = location[0]
+                    lng = location[1]
+                    csvList.append(",".join(map(str,[lat+0.00175, lng+0.00175, '', "ff0000", ' '.join(map(str,entry[2:]))])))
                 csv = "\n".join(csvList)
                 return Response(
                     csv,
@@ -187,7 +228,6 @@ def display():
             return render_template('login.html', msg=emsg)
 
     return render_template('display.html', form=form)
-
 
 @app.route('/login/', methods=('GET', 'POST'))
 def login():
@@ -219,7 +259,6 @@ def login():
     else:
         return render_template('login.html', form=form)
 
-
 @app.route('/register', methods=('GET', 'POST'))
 def register():
     # store id with random index number
@@ -241,7 +280,6 @@ def register():
             return render_template('login.html', form=form, msg=emsg), 200
     else:
         return render_template('register.html', form=form)
-
 
 # Handles location send requests
 @app.route('/send_location', methods=['POST'])
@@ -292,13 +330,54 @@ def send():
         time_at = int(past[4]) + (difference.total_seconds() % 3600)/60 # make it a difference between date's time and past's time
     else:
         time_at = 0
+    location = salt(lati, longi)
+    lati = location[0]
+    longi = location[1]
     # send new entry with all updated variables to the
     sql = "INSERT INTO user_info VALUES ('%s', '%s',  '%s',  '%s', '%s', '%s', '%s')" % (u_id, date, time, lati, longi, time_at, status)
     db.query(sql)
 
     return render_template('location.html'), 200
 
+# Allows users to report that they've tested positive
+@app.route('/report', methods=['GET', 'POST'])
+@login_required
+def report():
+    form = ReportForm()
+    if form.validate_on_submit():
+        username = form.username.data
+        print("Updating user infected status for: ", username)
 
+        sql = "SELECT latitude, longitude, date, time, time_at_location FROM user_info WHERE name LIKE '%s';" % (username)
+        results = db.get(sql)
+        if results:
+            if tab:
+                txt = "User I.D.\tDate\tTime\tLatitude\tLongitude\tTime at Location\n"
+                usr = get_user(username)
+                for entry in results:
+                    txt = txt + "%s\t%s\t%s\t%s\t%s\t%s\n" % (usr.id, entry[2], entry[3], entry[0]+0.00175, entry[1]+0.00175, entry[4])
+                return Response(
+                    txt,
+                    mimetype="text/plain",
+                    headers={"Content-disposition":
+                             "attachment; filename=locations.txt"})
+            else:
+                csvList = ["lat,lng,name,color,note"]
+                for entry in results:
+                    csvList.append(",".join(map(str,[entry[0]+0.00175, entry[1]+0.00175, '', "ff0000", ' '.join(map(str,entry[2:]))])))
+                csv = "\n".join(csvList)
+                return Response(
+                    csv,
+                    mimetype="text/csv",
+                    headers={"Content-disposition":
+                             "attachment; filename=locations.csv"})
+        else:
+            emsg = "No user found. please regiser"
+            return render_template('login.html', msg=emsg)
+
+    return render_template('display.html', form=form)
+
+#__________ERROR PAGES__________
 # Error handling routing
 @app.errorhandler(404)
 def error_404(error):
@@ -319,6 +398,9 @@ def error_401(error):
 def error_400(error):
     return render_template('400.html'), 400
 
-
+#__________MAIN__________
 if __name__ == "__main__":
-    app.run(debug=True)
+    if local == False:
+        app.run(debug=False)
+    else:
+        app.run(debug=True,host='localhost')
