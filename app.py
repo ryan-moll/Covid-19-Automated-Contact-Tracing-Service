@@ -166,8 +166,8 @@ def display():
                     headers={"Content-disposition":
                              "attachment; filename=locations.csv"})
         else:
-            emsg = "No user found. please regiser"
-            return render_template('login.html', msg=emsg)
+            emsg = "No user found. Check that you spelled the username correctly and try again."
+            return render_template('display.html', form=form, msg=emsg)
 
     return render_template('display.html', form=form)
 
@@ -225,7 +225,7 @@ def register():
             sql = "INSERT INTO user_id VALUES ('%s', '%s', '%s')" % (newUser.id, username, newUser.password)
             db.query(sql)
             emsg = "You have successfully registered! You may now log in."
-            return render_template('login.html', form=form, msg=emsg), 200
+            return render_template('login.html', form=form, msg=emsg), 200 # Shouldn't this pass in the login form not the Register form?
     else:
         return render_template('register.html', form=form)
 
@@ -291,6 +291,7 @@ def send():
 @app.route('/report', methods=['GET', 'POST'])
 @login_required
 def report():
+    # Difference of 0.00002 in lat/long is 7.28346457 feet apart
     form = ReportForm()
     if form.validate_on_submit():
         username = form.username.data
@@ -383,7 +384,7 @@ def unsalt(lat, lng):
     for i in range(len(loList)-1):
         if loList[i].isdigit():
             loList[i] = str((int(loList[i])+10-loSub)%10)
-    return ["".join(laList), "".join(loList)]
+    return [float("".join(laList)), float("".join(loList))]
 
 def create_user(usr, pas, uid=None):
     if not uid:
