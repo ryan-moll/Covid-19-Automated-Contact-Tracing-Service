@@ -6,6 +6,8 @@ Also manages the connection to the database for storing location data and user d
 import uuid
 import sys
 import MySQLdb.cursors
+import smtplib, ssl 
+import cred
 from random import randrange
 from flask import Flask, request, Response
 from flask import redirect, flash
@@ -37,14 +39,14 @@ class DB: # https://stackoverflow.com/questions/207981/how-to-enable-mysql-clien
             self.conn =  MySQLdb.connect(
                          host='Group7.mysql.pythonanywhere-services.com',
                          user='Group7',
-                         passwd='hello123',
+                         passwd=cred.paSQLpass,
                          database='Group7$project_2'
                          )
         else:
             self.conn =  MySQLdb.connect(port=3548,
                          host='ix-dev.cs.uoregon.edu',
                          user='cis422-group7',
-                         password='Group7',
+                         password=cred.ixSQLpass,
                          db='project_1',
                          charset='utf8')
 
@@ -78,11 +80,12 @@ class DB: # https://stackoverflow.com/questions/207981/how-to-enable-mysql-clien
 
 
 class User(UserMixin): # Base login system derived from code here: https://flask-login.readthedocs.io/en/latest/
-    def __init__(self, user, status):
+    def __init__(self, user, status, email):
         self.username = user[0].lower()
         self.password = user[1]
         self.id = user[2]
         self.status = status
+        self.email = email
 
     def verify_password(self, password):
         if self.password is None:
@@ -92,6 +95,18 @@ class User(UserMixin): # Base login system derived from code here: https://flask
     def get_id(self):
         return self.id
 
+    def notify(self, lat, lng, date, time): # Email code based on https://realpython.com/python-send-email/
+        message = """\
+        Subject: Important Covid-19 Exposure Alert
+
+        Someone you were in close proximity to over the last 14 days has tested positive for Covid-19. The encounter happened at (%s, %s) on %s at %s. Please respond accordingly. You can learn more here: https://www.cdc.gov/coronavirus/2019-ncov/index.html""" % (lat, lng, date, time)
+
+        context = ssl.create_default_context()
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as server:
+            server.login("covid.alert.422@gmail.com", cred.emailPass)
+            server.sendmail("covid.alert.422@gmail.com", self.email, message)
+        return
+
 
 
 #__________FLASK__________
@@ -99,7 +114,7 @@ app = Flask(__name__)
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
-app.secret_key = 'abc' # Does this need to be something more secure?
+app.secret_key = cred.secretKey
 @login_manager.user_loader
 def load_user(user_id):
     if user_id not in userObjects:
@@ -120,6 +135,7 @@ class LoginForm(FlaskForm):
 class RegistrationForm(FlaskForm):
     username = StringField('user', validators=[DataRequired()])
     password = PasswordField('password', validators=[DataRequired()])
+    email = StringField('email', validators=[DataRequired()])
     remember_me = BooleanField('Remember Me')
 
 
@@ -233,13 +249,14 @@ def register():
         # User should be an instance of your 'User' class
         username = form.username.data.lower()
         password = form.password.data
+        email = form.email.data
 
         if get_user(username):
             emsg = "That username is taken. Try another one."
             return render_template('register.html', form=form, msg=emsg), 400
         else:
-            newUser = create_user(username, generate_password_hash(password))
-            sql = "INSERT INTO user_id VALUES ('%s', '%s', '%s', '%s')" % (newUser.id, username, newUser.password, 0) # 0 indicates that the user is not infected. They can change this if they are.
+            newUser = create_user(username, generate_password_hash(password), email)
+            sql = "INSERT INTO user_id VALUES ('%s', '%s', '%s', '%s', '%s')" % (newUser.id, username, newUser.password, 0, email) # 0 indicates that the user is not infected. They can change this if they are.
             db.query(sql)
             emsg = "You have successfully registered! You may now log in."
             return render_template('login.html', form=form, msg=emsg), 200 # Shouldn't this pass in the login form not the Register form?
@@ -256,6 +273,7 @@ def send():
     sql = "SELECT latitude, longitude, date, time, time_at_location FROM user_info WHERE name LIKE '%s';" % (current_user.username)
     results = db.get(sql) # Query the database for entries from a particular user
 
+    pastLat = pastLng = 0
     if results is (): # If no entries are found in the database (for new users)
         past = (0, 0, datetime.today().date(), timedelta(0, 86400), 0) # Create dummy location
     else:
@@ -312,22 +330,27 @@ def report():
         
         print("Updating user infected status for: ", username)
         infected.status = 1
-        sql = "SELECT * FROM contacts WHERE personA LIKE '%s' OR personB LIKE '%s';" % (username)
+        sql = "SELECT * FROM contacts WHERE personA LIKE '%s' OR personB LIKE '%s';" % (username, username)
         results = db.get(sql)
 
         if results:
             sql = "UPDATE user_id SET user_status = 1 WHERE name LIKE '%s';" % (username)
             db.query(sql)
             for contact in results:
-                # Notify the other user via email here
-                # Update the other user's status to 2 here
-                pass
+                if contact[0] == username:
+                    other = get_user(contact[1])
+                else:
+                    other = get_user(contact[0])
+                other.notify(contact[4], contact[5], contact[2], contact[3])
+                other.status = 2
+                sql = "UPDATE user_id SET user_status = 2 WHERE name LIKE '%s';" % (other.username)
+                db.query(sql)
             emsg = "Your status has been updated. Thank you."
-            return render_template('report.html', form, msg=emsg)
+            return render_template('report.html', form=form, msg=emsg)
         else:
             print("No users in contact with the infected user.")
             emsg = "Your status has been updated. Thank you."
-            return render_template('report.html', form, msg=emsg)
+            return render_template('report.html', form=form, msg=emsg)
 
     return render_template('report.html', form=form)
 
@@ -391,10 +414,10 @@ def unsalt(lat, lng):
     return [float("".join(laList)), float("".join(loList))]
 
 
-def create_user(usr, pas, uid=None, status=0):
+def create_user(usr, pas, email, uid=None, status=0):
     if not uid:
         uid = uuid.uuid4()
-    user = User([usr.lower(), pas, uid], status)
+    user = User([usr.lower(), pas, uid], status, email)
     userObjects[uid] = user
     return user
 
@@ -450,7 +473,7 @@ userObjects = {}
 
 results = db.get("SELECT * FROM user_id")
 for user in results:
-    create_user(user[1], user[2], user[0], user[3])
+    create_user(user[1], user[2], user[4], user[0], user[3])
 
 
 
