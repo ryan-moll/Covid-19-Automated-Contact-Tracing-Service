@@ -26,6 +26,8 @@ from wtforms.validators import DataRequired
 from datetime import *
 from math import isclose
 
+
+
 #__________CLASSES__________
 class DB: # https://stackoverflow.com/questions/207981/how-to-enable-mysql-client-auto-re-connect-with-mysqldb
     def __init__(self):
@@ -74,6 +76,7 @@ class DB: # https://stackoverflow.com/questions/207981/how-to-enable-mysql-clien
                 results = r.fetch_row(maxrows=0)
         return results
 
+
 class User(UserMixin): # Base login system derived from code here: https://flask-login.readthedocs.io/en/latest/
     def __init__(self, user, status):
         self.username = user[0].lower()
@@ -89,6 +92,8 @@ class User(UserMixin): # Base login system derived from code here: https://flask
     def get_id(self):
         return self.id
 
+
+
 #__________FLASK__________
 app = Flask(__name__)
 login_manager = LoginManager()
@@ -101,6 +106,8 @@ def load_user(user_id):
         return None
     return userObjects[user_id]
 
+
+
 #__________FORMS__________
 #TODO: Make a superclass for all of these forms to inherit from to reduce redundancy
 class LoginForm(FlaskForm):
@@ -109,17 +116,22 @@ class LoginForm(FlaskForm):
     remember_me = BooleanField('Remember Me')
     submit = SubmitField('log in')
 
+
 class RegistrationForm(FlaskForm):
     username = StringField('user', validators=[DataRequired()])
     password = PasswordField('password', validators=[DataRequired()])
     remember_me = BooleanField('Remember Me')
 
+
 class DisplayForm(FlaskForm):
     username = StringField('user', validators=[DataRequired()])
     tab = BooleanField('Tab delimited output file')
 
+
 class ReportForm(FlaskForm):
     username = StringField('user', validators=[DataRequired()])
+
+
 
 #__________ROUTING__________
 # Handles routing to the home page
@@ -128,6 +140,7 @@ class ReportForm(FlaskForm):
 @login_required
 def index():
     return render_template('location.html'), 200
+
 
 @app.route('/display/', methods=('GET', 'POST'))
 def display():
@@ -172,6 +185,7 @@ def display():
 
     return render_template('display.html', form=form)
 
+
 @app.route('/login/', methods=('GET', 'POST'))
 def login():
     if current_user.is_authenticated: # If the user is already logged in, send them to the main page
@@ -202,11 +216,13 @@ def login():
     else:
         return render_template('login.html', form=form)
 
+
 @app.route('/logout')
 @login_required
 def logout():
     logout_user()
     return redirect(url_for('login'))
+
 
 @app.route('/register', methods=('GET', 'POST'))
 def register():
@@ -230,64 +246,57 @@ def register():
     else:
         return render_template('register.html', form=form)
 
+
 # Handles location send requests
 @app.route('/send_location', methods=['POST'])
 @login_required
 def send():
-    # request form from website containing user information and create a dictionary using it
-    data = request.form.to_dict(flat=False)
-    # query the database for entries from a particular user
+    data = request.form.to_dict(flat=False) # Request form from website containing user information and create a dictionary using it
+    date, time = data.get('date')[0], data.get('time')[0]
     sql = "SELECT latitude, longitude, date, time, time_at_location FROM user_info WHERE name LIKE '%s';" % (current_user.username)
-    # select most recent entry
-    results = db.get(sql)
+    results = db.get(sql) # Query the database for entries from a particular user
 
-    # create a dummy location if no entries are found in the database (for new users)
-    if results is ():
-        # create dummy location
-        past = (0, 0, datetime.today().date(), timedelta(0, 86400), 0)
+    if results is (): # If no entries are found in the database (for new users)
+        past = (0, 0, datetime.today().date(), timedelta(0, 86400), 0) # Create dummy location
     else:
-        past = results[-1]
+        past = results[-1] # Select most recent entry
+        loc = unsalt(past[0], past[1])
+        pastLat, pastLng = loc[0], loc[1]
 
-    # checks to make sure that the latitude nad longitude information received from the user is not null
-    if 'null' in data.get('lat')[0] or 'null' in data.get('lng')[0]:
-        lati = past[0]
-        longi = past[1]
+    if 'null' in data.get('lat')[0] or 'null' in data.get('lng')[0]: # Check to make sure that the latitude nad longitude received from the user are not null
+        lati, longi = past[0], past[1]
     else:
-        lati = data.get('lat')[0]
-        longi = data.get('lng')[0]
-    u_id = current_user.username
-    date = data.get('date')[0]
-    time = data.get('time')[0]
+        lati, longi = data.get('lat')[0], data.get('lng')[0]
 
-    # if the newly received location and the newest entry in the database are within a meter
-    # Calculates the time difference between the newly received entry
-    # and the most recent entry in the database from that particular user
-    # since the time sent from the website is a string and the time in the database is a timedelta,
-    # the time from the website is converted to a datetime and the two are subtracted and then added to the time at loc
-    # otherwise sets time_at to 0 as location is different
-    if abs(float(past[0]) - float(lati)) <= .00001 and abs(float(past[1]) - float(longi)) <= .00001:
-        # src on how to parse colon datetimes https://stackoverflow.com/questions/30999230/how-to-parse-timezone-with-colon
-        inter_time = time[0:2]+time[3:5] + time[6:8]
+    '''
+    If the newly received location and the newest entry in the database are within a meter, calculate the time difference 
+    between the newly received entry and the most recent entry in the database from that particular user. Since the time 
+    sent from the website is a string and the time in the database is a timedelta, the time from the website is converted to 
+    a datetime and the two are subtracted and then added to the time at loc. Otherwise location is different so time_at is 0 
+    '''
+    if abs(float(pastLat) - float(lati)) <= .00001 and abs(float(pastLng) - float(longi)) <= .00001:
+        inter_time = time[0:2]+time[3:5] + time[6:8] # How to parse colon datetimes https://stackoverflow.com/questions/30999230/how-to-parse-timezone-with-colon
         data_dt = datetime.strptime(inter_time, '%H%M%S').time()
         past_time = (datetime.min + past[3]).time()
-        # concept for difference based on https://stackoverflow.com/questions/9578906/easiest-way-to-combine-date-and-time-strings-to-single-datetime-object-using-pyt
-        difference = datetime.combine(datetime.today(), data_dt) - datetime.combine(datetime.today(), past_time)
+    
+        difference = datetime.combine(datetime.today(), data_dt) - datetime.combine(datetime.today(), past_time) # Concept for difference based on https://stackoverflow.com/questions/9578906/easiest-way-to-combine-date-and-time-strings-to-single-datetime-object-using-pyt
         print(difference.total_seconds() % 3600)
 
-        #timedelta to minutes src https://stackoverflow.com/questions/14190045/how-do-i-convert-datetime-timedelta-to-minutes-hours-in-python/43965102
-        time_at = int(past[4]) + (difference.total_seconds() % 3600)/60 # make it a difference between date's time and past's time
-    else:
+        # Timedelta to minutes from https://stackoverflow.com/questions/14190045/how-do-i-convert-datetime-timedelta-to-minutes-hours-in-python/43965102
+        time_at = int(past[4]) + (difference.total_seconds() % 3600)/60 # Make it a difference between date's time and past's time
+        sql = "UPDATE user_info SET time_at_location = '%s' WHERE name LIKE '%s' ORDER BY date DESC, time DESC LIMIT 1;" % (time_at, current_user.username)
+        db.query(sql) # Update time_at_location for the previous entry
+    else: # The user moved more than a meter
         time_at = 0
-    location = salt(lati, longi)
-    saltLati = location[0]
-    saltLongi = location[1]
-    # send new entry with all updated variables to the
-    sql = "INSERT INTO user_info VALUES ('%s', '%s',  '%s',  '%s', '%s', '%s')" % (u_id, date, time, saltLati, saltLongi, time_at)
-    db.query(sql)
+        location = salt(lati, longi) # Salt location data before storing it in the DB
+        saltLati, saltLongi = location[0], location[1]
+        sql = "INSERT INTO user_info VALUES ('%s', '%s',  '%s',  '%s', '%s', '%s')" % (current_user.username, date, time, saltLati, saltLongi, time_at)
+        db.query(sql) # Send new entry with all updated variables to the DB
 
-    contactTrace(u_id, date, time, lati, longi)
+    contactTrace(current_user.username, date, time, lati, longi) # Check if this entry is overlaps with any other users last entries
 
     return render_template('location.html'), 200
+
 
 # Allows users to report that they've tested positive
 @app.route('/report', methods=['GET', 'POST'])
@@ -307,7 +316,7 @@ def report():
         results = db.get(sql)
 
         if results:
-            sql = "UPDATE user_id SET user_status = 1 WHERE name = '%s';" % (username)
+            sql = "UPDATE user_id SET user_status = 1 WHERE name LIKE '%s';" % (username)
             db.query(sql)
             for contact in results:
                 # Notify the other user via email here
@@ -321,6 +330,8 @@ def report():
             return render_template('report.html', form, msg=emsg)
 
     return render_template('report.html', form=form)
+
+
 
 #__________ERROR PAGES__________
 # Error handling routing
@@ -343,38 +354,42 @@ def error_401(error):
 def error_400(error):
     return render_template('400.html'), 400
 
+
+
 #__________HELPER FUNCTIONS__________
 # Given a latitude and longitude it adds random numbers to specified positions to obscure the actual data
 def salt(lat, lng):
-    la = floatTrunc(lat, 7)
-    lo = floatTrunc(lng, 7)
-    laSum = int(la[-1])
-    loSum = int(lo[-1])
-    laList = list(la)
-    loList = list(lo)
+    la, lo = floatTrunc(lat, 7), floatTrunc(lng, 7)
+    laSum, loSum = int(la[-1]), int(lo[-1])
+    laList, loList = list(la), list(lo)
+
     for i in range(len(laList)-1):
         if laList[i].isdigit():
             laList[i] = str((int(laList[i])+laSum)%10)
+
     for i in range(len(loList)-1):
         if loList[i].isdigit():
             loList[i] = str((int(loList[i])+loSum)%10)
+
     return ["".join(laList), "".join(loList)]
+
 
 # Given a salted latitude and longitude, return the actual data
 def unsalt(lat, lng):
-    la = str(lat)
-    lo = str(lng)
-    laList = list(la)
-    loList = list(lo)
-    laSub = int(la[-1])
-    loSub = int(lo[-1])
+    la, lo = str(lat), str(lng)
+    laList, loList = list(la), list(lo)
+    laSub, loSub = int(la[-1]), int(lo[-1])
+
     for i in range(len(laList)-1):
         if laList[i].isdigit():
             laList[i] = str((int(laList[i])+10-laSub)%10)
+    
     for i in range(len(loList)-1):
         if loList[i].isdigit():
             loList[i] = str((int(loList[i])+10-loSub)%10)
+    
     return [float("".join(laList)), float("".join(loList))]
+
 
 def create_user(usr, pas, uid=None, status=0):
     if not uid:
@@ -382,6 +397,7 @@ def create_user(usr, pas, uid=None, status=0):
     user = User([usr.lower(), pas, uid], status)
     userObjects[uid] = user
     return user
+
 
 # Given a username, it returns a User object
 def get_user(usr):
@@ -400,16 +416,15 @@ def floatTrunc(num, deg):
     num = ".".join(numSplit)
     return num
 
+
 def contactTrace(name, date, time, lat, lng):
-    lat1 = float(floatTrunc(lat, 5))
-    lng1 = float(floatTrunc(lng, 5))
+    lat1, lng1 = float(floatTrunc(lat, 5)), float(floatTrunc(lng, 5))
     sql = "SELECT name, latitude, longitude FROM user_info WHERE time_to_sec(timediff('%s', time)) < 500 AND datediff('%s', date) LIKE 0 AND name NOT LIKE '%s'" % (time, date, name)
     results = db.get(sql)
     contacts = []
     for entry in results:
         loc = unsalt(entry[1], entry[2])
-        lat2 = float(floatTrunc(loc[0], 5))
-        lng2 = float(floatTrunc(loc[1], 5))
+        lat2, lng2 = float(floatTrunc(loc[0], 5)), float(floatTrunc(loc[1], 5))
         if abs(lat1-lat2) <= 0.00002 and abs(lng1-lng2) <= 0.00002: # Difference of 0.00002 in lat/long is 7.28346457 feet apart
             contacts.append(entry[0])
     saltLoc = salt(lat, lng)
@@ -417,6 +432,8 @@ def contactTrace(name, date, time, lat, lng):
         sql = "INSERT INTO contacts VALUES ('%s', '%s', '%s', '%s', '%s', '%s')" % (name, contact, date, time, saltLoc[0], saltLoc[1])
         db.query(sql)
     return 
+
+
 
 #__________STARTUP__________
 # TODO: How much of this can be moved to main?
@@ -434,6 +451,8 @@ userObjects = {}
 results = db.get("SELECT * FROM user_id")
 for user in results:
     create_user(user[1], user[2], user[0], user[3])
+
+
 
 #__________MAIN__________
 if __name__ == "__main__":
