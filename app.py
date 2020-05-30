@@ -298,10 +298,11 @@ def report():
         username = form.username.data
         print("Updating user infected status for: ", username)
 
-        sql = "SELECT latitude, longitude, date, time, time_at_location FROM user_info WHERE name LIKE '%s';" % (username)
+        sql = "SELECT * FROM user_id WHERE name LIKE '%s';" % (username)
         results = db.get(sql)
         if results:
-            #TODO: Reporting logic here
+            sql = "update user_id set user_status =  1 where name = '%s';" % (username)
+            db.query(sql)
             return render_template('report.html', form=form)
         else:
             emsg = "No user found. Check that you spelled the username correctly and try again."
