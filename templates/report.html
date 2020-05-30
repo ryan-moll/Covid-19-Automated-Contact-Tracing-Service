@@ -2,16 +2,35 @@
 ___report.html___
 Reporting webpage. Contains a form that is handled by app.py on submission for users to report when they have tested poritive for Covid-19 so that the system can alert other users.
 -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Report</title>
+    <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+    <ul>
+        {% if current_user.is_anonymous %}
+            <li><a href="/display">Display</a></li>
+            <li style="float:right"><a class="active" href="/login">Log in</a></li>
+        {% else %}
+            <li><a href="/">Home</a></li>
+            <li><a href="/display">Display</a></li>
+            <li><a href="/report">Reporting</a></li>
+            <li style="float:right"><a class="active" href="/logout">Log out</a></li>
+        {% endif %}
+    </ul>
+    <h1>Report here if you have tested positive for Covid-19</h1>
+    <!--
+    creates a text box that the user puts their user name into
+    it then sends that username ID to the python file to perform the query to the database
+    -->
+    <form method='POST'>
+      {{ form.csrf_token }}
+      {{ form.username.label }} {{ form.username(size=20) }}
+    <input type="submit" value="Report">
+    </form>
 
-<h1>Report here if you have tested positive for Covid-19</h1>
-<!--
-creates a text box that the user puts their user name into
-it then sends that username ID to the python file to perform the query to the database
--->
-<form method='POST'>
-  {{ form.csrf_token }}
-  {{ form.username.label }} {{ form.username(size=20) }}
-<input type="submit" value="Report">
-</form>
-
-<p><a href='/login'>find past locations here!</a></p>
+</body>
+</html>
+    

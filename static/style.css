@@ -1,0 +1,41 @@
+/* https://www.w3schools.com/css/css_navbar_horizontal.asp */
+ul {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background-color: #8dab7f;
+}
+
+li {
+  float: left;
+  color: #1e2019;
+}
+
+li a {
+  display: block;
+  color: white;
+  text-align: center;
+  padding: 14px 16px;
+  text-decoration: none;
+}
+
+li a:hover:not(.active) {
+  background-color: #3a5b38;
+}
+
+.active {
+  background-color: #544b3d;
+}
+
+/* https://www.w3schools.com/css/css3_buttons.asp */
+.button {
+  background-color: #544b3d;
+  border: none;
+  color: white;
+  padding: 10px 25px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+}

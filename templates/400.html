@@ -1,9 +1,22 @@
 <html>
 <head>
-  <title>400 Error</title>
+    <title>400 Error</title>
+    <link rel="stylesheet" href="/static/style.css" />
 </head>
+
 <body>
-<h1>You submitted a bad request</h1>
-<p>Maybe try <a href="/">the home page</a>?</p>
+    <ul>
+        {% if current_user.is_anonymous %}
+            <li><a href="/display">Display</a></li>
+            <li style="float:right"><a class="active" href="/login">Log in</a></li>
+        {% else %}
+            <li><a href="/">Home</a></li>
+            <li><a href="/display">Display</a></li>
+            <li><a href="/report">Reporting</a></li>
+            <li style="float:right"><a class="active" href="/logout">Log out</a></li>
+        {% endif %}
+    </ul>
+    <h1>You submitted a bad request</h1>
+    <p>Maybe try <a href="/">the home page</a>?</p>
 </body>
 </html>

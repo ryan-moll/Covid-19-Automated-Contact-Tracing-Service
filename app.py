@@ -115,26 +115,26 @@ def load_user(user_id):
 #__________FORMS__________
 # TODO: Make a superclass for all of these forms to inherit from to reduce redundancy
 class LoginForm(FlaskForm):
-    username = StringField('user', validators=[DataRequired()])
-    password = PasswordField('password', validators=[DataRequired()])
+    username = StringField('Username', validators=[DataRequired()])
+    password = PasswordField('Password', validators=[DataRequired()])
     remember_me = BooleanField('Remember Me')
     submit = SubmitField('log in')
 
 
 class RegistrationForm(FlaskForm):
-    username = StringField('user', validators=[DataRequired()])
-    password = PasswordField('password', validators=[DataRequired()])
-    email = StringField('email', validators=[DataRequired()])
+    username = StringField('Username', validators=[DataRequired()])
+    password = PasswordField('Password', validators=[DataRequired()])
+    email = StringField('Email', validators=[DataRequired()])
     remember_me = BooleanField('Remember Me')
 
 
 class DisplayForm(FlaskForm):
-    username = StringField('user', validators=[DataRequired()])
+    username = StringField('Username', validators=[DataRequired()])
     tab = BooleanField('Tab delimited output file')
 
 
 class ReportForm(FlaskForm):
-    username = StringField('user', validators=[DataRequired()])
+    username = StringField('Username', validators=[DataRequired()])
 
 
 
@@ -210,7 +210,7 @@ def login():
                     login_user(user, remember=True)
                 else:
                     login_user(user)
-                return render_template('location.html', form=form, username=username)
+                return render_template('location.html', form=form, username=username) #Shouldn't this form not be the login form?
             else:
                 emsg = "Error: Password incorrect."
                 flash(emsg)

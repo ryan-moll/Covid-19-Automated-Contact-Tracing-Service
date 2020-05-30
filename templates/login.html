@@ -2,15 +2,36 @@
 ___login.html___
 Login webpage. Contains a form that is handled by app.py on submission for users to log in.
 -->
-<h1>Login</h1>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login</title>
+    <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+    <ul>
+        {% if current_user.is_anonymous %}
+            <li><a href="/display">Display</a></li>
+            <li style="float:right"><a class="active" href="/login">Log in</a></li>
+        {% else %}
+            <li><a href="/">Home</a></li>
+            <li><a href="/display">Display</a></li>
+            <li><a href="/report">Reporting</a></li>
+            <li style="float:right"><a class="active" href="/logout">Log out</a></li>
+        {% endif %}
+    </ul>
 
-<form method='POST' action='/login/'>
-  {{ form.csrf_token }}
-  {{ form.username.label }} {{ form.username(size=20) }}
-  {{ form.password.label }} {{ form.password(size=20) }}
-  {{ form.remember_me.label }} {{ form.remember_me(size=20) }}
-<input type="submit" value="Login">
-</form>
+    <h1>Login</h1>
 
-<p> <a href="/register"> New user? Register here!</a></p>
-<p> <a href="/display"> Find past locations here!</a></p>
+    <form method='POST' action='/login/'>
+      {{ form.csrf_token }}
+      {{ form.username.label }} {{ form.username(size=20) }}
+      {{ form.password.label }} {{ form.password(size=20) }}
+      {{ form.remember_me.label }} {{ form.remember_me(size=20) }}
+    <input type="submit" value="Login">
+    </form>
+
+    </br>
+    <a href="/register" class="button">New user? Register here!</a>
+</body>
+</html>

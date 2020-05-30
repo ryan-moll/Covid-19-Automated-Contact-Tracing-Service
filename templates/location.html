@@ -6,25 +6,39 @@ Gets users location and sends a form containing that information to app.py every
 
 <!DOCTYPE html>
 <html>
+<head>
+    <title>Location</title>
+    <link rel="stylesheet" href="/static/style.css" />
+</head>
 <body>
+    <ul>
+        {% if current_user.is_anonymous %}
+            <li><a href="/display">Display</a></li>
+            <li style="float:right"><a class="active" href="/login">Log in</a></li>
+        {% else %}
+            <li><a href="/">Home</a></li>
+            <li><a href="/display">Display</a></li>
+            <li><a href="/report">Reporting</a></li>
+            <li style="float:right"><a class="active" href="/logout">Log out</a></li>
+        {% endif %}
+    </ul>
+    <h1>Covid-19 Mobile Data Tracking</h1>
+    <p>Date/Time: <span id="datetime"></span></p>
+    <p>Click the button to get your coordinates.</p>
 
-<h1>Covid-19 Mobile Data Tracking</h1>
-<p>Date/Time: <span id="datetime"></span></p>
-<p>Click the button to get your coordinates.</p>
+    <button id="get" onclick="getLocation()">Find Location</button>
+    <button id="send" onclick="SendLocation()">Send Location</button>
 
-<button id="get" onclick="getLocation()">Find Location</button>
-<button id="send" onclick="SendLocation()">Send Location</button>
+    <p id="demo"></p>
 
-<p id="demo"></p>
+    <form id="location" action="/send_location" method="POST">
+        <input type="hidden" id="lat" name="lat" value="null"><br>
+        <input type="hidden" id="lng" name="lng" value="null"><br>
+        <input type="hidden" id="_date" name="date" value="null"><br>
+        <input type="hidden" id="time" name="time" value="null"><br>
+    </form>
 
-<form id="location" action="/send_location" method="POST">
-    <input type="hidden" id="lat" name="lat" value="null"><br>
-    <input type="hidden" id="lng" name="lng" value="null"><br>
-    <input type="hidden" id="_date" name="date" value="null"><br>
-    <input type="hidden" id="time" name="time" value="null"><br>
-</form>
-
-<!--<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>-->
+    <!--<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>-->
 
 <script>
 
@@ -99,9 +113,5 @@ function SendLocation() {
     locationForm.submit();
 }
 </script>
-<p><a href='/report'>report sickness here!,</a></p>
-<p><a href='/display'>find past locations here!</a></p>
-<p><a href='/logout'>click here to log out,</a></p>
-
 </body>
 </html>
