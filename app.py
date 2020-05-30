@@ -1,54 +1,43 @@
-'''
+"""
 ___app.py___
 Main driver code for the website. Handles page routing, HTTP requests, and user login through Flask.
 Also manages the connection to the database for storing location data and user data.
-'''
+"""
 import uuid
 import sys
 import MySQLdb.cursors
-import smtplib, ssl 
+import smtplib, ssl
 import cred
-from random import randrange
-from flask import Flask, request, Response
-from flask import redirect, flash
-from flask import render_template, url_for
-from flask_login import LoginManager
-from flask_login import UserMixin
-from flask_login import current_user, login_required
-from flask_login import logout_user, login_user
+from flask import Flask, request, Response, redirect, flash, render_template, url_for
+from flask_login import LoginManager, UserMixin, current_user, login_required, logout_user, login_user
 from flask_wtf.form import FlaskForm
-from itsdangerous import (TimedJSONWebSignatureSerializer \
-                              as Serializer, BadSignature, \
-                          SignatureExpired)
-import csv
 from werkzeug.security import check_password_hash
 from werkzeug.security import generate_password_hash
 from wtforms import PasswordField, BooleanField, StringField, SubmitField
 from wtforms.validators import DataRequired
 from datetime import *
-from math import isclose
 
 
-
-#__________CLASSES__________
-class DB: # https://stackoverflow.com/questions/207981/how-to-enable-mysql-client-auto-re-connect-with-mysqldb
+# __________CLASSES__________
+class DB:  # https://stackoverflow.com/questions/207981/how-to-enable-mysql-client-auto-re-connect-with-mysqldb
     def __init__(self):
         conn = None
+
     def connect(self):
-        if local == False:
-            self.conn =  MySQLdb.connect(
-                         host='Group7.mysql.pythonanywhere-services.com',
-                         user='Group7',
-                         passwd=cred.paSQLpass,
-                         database='Group7$project_2'
-                         )
+        if not local:
+            self.conn = MySQLdb.connect(
+                        host='Group7.mysql.pythonanywhere-services.com',
+                        user='Group7',
+                        passwd=cred.paSQLpass,
+                        database='Group7$project_2'
+                        )
         else:
-            self.conn =  MySQLdb.connect(port=3548,
-                         host='ix-dev.cs.uoregon.edu',
-                         user='cis422-group7',
-                         password=cred.ixSQLpass,
-                         db='project_1',
-                         charset='utf8')
+            self.conn = MySQLdb.connect(port=3548,
+                        host='ix-dev.cs.uoregon.edu',
+                        user='cis422-group7',
+                        password=cred.ixSQLpass,
+                        db='project_1',
+                        charset='utf8')
 
     def query(self, sql):
         self.conn.ping(True)
@@ -79,7 +68,7 @@ class DB: # https://stackoverflow.com/questions/207981/how-to-enable-mysql-clien
         return results
 
 
-class User(UserMixin): # Base login system derived from code here: https://flask-login.readthedocs.io/en/latest/
+class User(UserMixin):  # Base login system derived from code here: https://flask-login.readthedocs.io/en/latest/
     def __init__(self, user, status, email):
         self.username = user[0].lower()
         self.password = user[1]
@@ -109,12 +98,13 @@ class User(UserMixin): # Base login system derived from code here: https://flask
 
 
 
-#__________FLASK__________
+# __________FLASK__________
 app = Flask(__name__)
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 app.secret_key = cred.secretKey
+
 @login_manager.user_loader
 def load_user(user_id):
     if user_id not in userObjects:
@@ -124,7 +114,7 @@ def load_user(user_id):
 
 
 #__________FORMS__________
-#TODO: Make a superclass for all of these forms to inherit from to reduce redundancy
+# TODO: Make a superclass for all of these forms to inherit from to reduce redundancy
 class LoginForm(FlaskForm):
     username = StringField('user', validators=[DataRequired()])
     password = PasswordField('password', validators=[DataRequired()])
@@ -149,7 +139,7 @@ class ReportForm(FlaskForm):
 
 
 
-#__________ROUTING__________
+# __________ROUTING__________
 # Handles routing to the home page
 @app.route("/")
 @app.route("/index")
@@ -204,12 +194,12 @@ def display():
 
 @app.route('/login/', methods=('GET', 'POST'))
 def login():
-    if current_user.is_authenticated: # If the user is already logged in, send them to the main page
+    if current_user.is_authenticated:  # If the user is already logged in, send them to the main page
         return render_template('location.html'), 200
     form = LoginForm()
     emsg = None
     if form.validate_on_submit():
-        # assigns information received from website to variables
+        # Assign information received from website to variables
         username = form.username.data.lower()
         password = form.password.data
         remember = form.remember_me.data
@@ -296,7 +286,7 @@ def send():
         inter_time = time[0:2]+time[3:5] + time[6:8] # How to parse colon datetimes https://stackoverflow.com/questions/30999230/how-to-parse-timezone-with-colon
         data_dt = datetime.strptime(inter_time, '%H%M%S').time()
         past_time = (datetime.min + past[3]).time()
-    
+
         difference = datetime.combine(datetime.today(), data_dt) - datetime.combine(datetime.today(), past_time) # Concept for difference based on https://stackoverflow.com/questions/9578906/easiest-way-to-combine-date-and-time-strings-to-single-datetime-object-using-pyt
         print(difference.total_seconds() % 3600)
 
@@ -304,12 +294,12 @@ def send():
         time_at = int(past[4]) + (difference.total_seconds() % 3600)/60 # Make it a difference between date's time and past's time
         sql = "UPDATE user_info SET time_at_location = '%s' WHERE name LIKE '%s' ORDER BY date DESC, time DESC LIMIT 1;" % (time_at, current_user.username)
         db.query(sql) # Update time_at_location for the previous entry
-    else: # The user moved more than a meter
+    else:  # The user moved more than a meter
         time_at = 0
         location = salt(lati, longi) # Salt location data before storing it in the DB
         saltLati, saltLongi = location[0], location[1]
         sql = "INSERT INTO user_info VALUES ('%s', '%s',  '%s',  '%s', '%s', '%s')" % (current_user.username, date, time, saltLati, saltLongi, time_at)
-        db.query(sql) # Send new entry with all updated variables to the DB
+        db.query(sql)  # Send new entry with all updated variables to the DB
 
     contactTrace(current_user.username, date, time, lati, longi) # Check if this entry is overlaps with any other users last entries
 
@@ -327,7 +317,7 @@ def report():
         if not infected:
             emsg = "No user found. Check that you spelled the username correctly and try again."
             return render_template('report.html', form, msg=emsg)
-        
+
         print("Updating user infected status for: ", username)
         infected.status = 1
         sql = "SELECT * FROM contacts WHERE personA LIKE '%s' OR personB LIKE '%s';" % (username, username)
@@ -360,7 +350,7 @@ def report():
 
 
 
-#__________ERROR PAGES__________
+# __________ERROR PAGES__________
 # Error handling routing
 @app.errorhandler(404)
 def error_404(error):
@@ -383,7 +373,7 @@ def error_400(error):
 
 
 
-#__________HELPER FUNCTIONS__________
+# __________HELPER FUNCTIONS__________
 # Given a latitude and longitude it adds random numbers to specified positions to obscure the actual data
 def salt(lat, lng):
     la, lo = floatTrunc(lat, 7), floatTrunc(lng, 7)
@@ -410,11 +400,11 @@ def unsalt(lat, lng):
     for i in range(len(laList)-1):
         if laList[i].isdigit():
             laList[i] = str((int(laList[i])+10-laSub)%10)
-    
+
     for i in range(len(loList)-1):
         if loList[i].isdigit():
             loList[i] = str((int(loList[i])+10-loSub)%10)
-    
+
     return [float("".join(laList)), float("".join(loList))]
 
 
@@ -433,6 +423,7 @@ def get_user(usr):
         if user.username == usr:
             return user
     return None
+
 
 # Takes a float or string float and truncates it to have 'deg' decimals
 def floatTrunc(num, deg):
@@ -458,11 +449,11 @@ def contactTrace(name, date, time, lat, lng):
     for contact in contacts:
         sql = "INSERT INTO contacts VALUES ('%s', '%s', '%s', '%s', '%s', '%s')" % (name, contact, date, time, saltLoc[0], saltLoc[1])
         db.query(sql)
-    return 
+    return
 
 
 
-#__________STARTUP__________
+# __________STARTUP__________
 # TODO: How much of this can be moved to main?
 local = False
 if len(sys.argv) > 1:
@@ -481,9 +472,9 @@ for user in results:
 
 
 
-#__________MAIN__________
+# __________MAIN__________
 if __name__ == "__main__":
-    if local == False:
+    if not local:
         app.run(debug=False)
     else:
         app.run(debug=True,host='localhost')
