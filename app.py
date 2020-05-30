@@ -11,8 +11,7 @@ import cred
 from flask import Flask, request, Response, redirect, flash, render_template, url_for
 from flask_login import LoginManager, UserMixin, current_user, login_required, logout_user, login_user
 from flask_wtf.form import FlaskForm
-from werkzeug.security import check_password_hash
-from werkzeug.security import generate_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 from wtforms import PasswordField, BooleanField, StringField, SubmitField
 from wtforms.validators import DataRequired
 from datetime import *
