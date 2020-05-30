@@ -296,16 +296,28 @@ def report():
     form = ReportForm()
     if form.validate_on_submit():
         username = form.username.data.lower()
-        print("Updating user infected status for: ", username)
-
-        sql = "SELECT * FROM user_id WHERE name LIKE '%s';" % (username)
-        results = db.get(sql)
-        if results:
-            sql = "update user_id set user_status =  1 where name = '%s';" % (username)
-            db.query(sql)
-            return render_template('report.html', form=form)
-        else:
+        infected = get_user(username)
+        if not infected:
             emsg = "No user found. Check that you spelled the username correctly and try again."
+            return render_template('report.html', form, msg=emsg)
+        
+        print("Updating user infected status for: ", username)
+        infected.status = 1
+        sql = "SELECT * FROM contacts WHERE personA LIKE '%s' OR personB LIKE '%s';" % (username)
+        results = db.get(sql)
+
+        if results:
+            sql = "UPDATE user_id SET user_status = 1 WHERE name = '%s';" % (username)
+            db.query(sql)
+            for contact in results:
+                # Notify the other user via email here
+                # Update the other user's status to 2 here
+                pass
+            emsg = "Your status has been updated. Thank you."
+            return render_template('report.html', form, msg=emsg)
+        else:
+            print("No users in contact with the infected user.")
+            emsg = "Your status has been updated. Thank you."
             return render_template('report.html', form, msg=emsg)
 
     return render_template('report.html', form=form)
@@ -367,11 +379,13 @@ def unsalt(lat, lng):
 def create_user(usr, pas, uid=None, status=0):
     if not uid:
         uid = uuid.uuid4()
-    user = User([usr, pas, uid], status)
+    user = User([usr.lower(), pas, uid], status)
     userObjects[uid] = user
     return user
 
+# Given a username, it returns a User object
 def get_user(usr):
+    usr = usr.lower()
     for user in userObjects.values():
         if user.username == usr:
             return user
@@ -389,7 +403,6 @@ def floatTrunc(num, deg):
 def contactTrace(name, date, time, lat, lng):
     lat1 = float(floatTrunc(lat, 5))
     lng1 = float(floatTrunc(lng, 5))
-    # print("First: " + name + str(lat1) + str(lng1) + date + time)
     sql = "SELECT name, latitude, longitude FROM user_info WHERE time_to_sec(timediff('%s', time)) < 500 AND datediff('%s', date) LIKE 0 AND name NOT LIKE '%s'" % (time, date, name)
     results = db.get(sql)
     contacts = []
@@ -397,12 +410,11 @@ def contactTrace(name, date, time, lat, lng):
         loc = unsalt(entry[1], entry[2])
         lat2 = float(floatTrunc(loc[0], 5))
         lng2 = float(floatTrunc(loc[1], 5))
-        # print("Second: " + entry[0] + str(lat2) + str(lng2))
         if abs(lat1-lat2) <= 0.00002 and abs(lng1-lng2) <= 0.00002: # Difference of 0.00002 in lat/long is 7.28346457 feet apart
             contacts.append(entry[0])
     saltLoc = salt(lat, lng)
     for contact in contacts:
-        sql = "INSERT INTO contacts VALUES ('%s', '%s', '%s', '%s', '%s', '%s', '%s')" % (name, contact, date, time, saltLoc[0], saltLoc[1])
+        sql = "INSERT INTO contacts VALUES ('%s', '%s', '%s', '%s', '%s', '%s')" % (name, contact, date, time, saltLoc[0], saltLoc[1])
         db.query(sql)
     return 
 
