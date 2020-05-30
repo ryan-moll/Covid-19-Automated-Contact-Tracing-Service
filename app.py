@@ -336,11 +336,15 @@ def report():
         if results:
             sql = "UPDATE user_id SET user_status = 1 WHERE name LIKE '%s';" % (username)
             db.query(sql)
+            contacted = [username]
             for contact in results:
                 if contact[0] == username:
                     other = get_user(contact[1])
                 else:
                     other = get_user(contact[0])
+                if other.username in contacted:
+                    continue
+                contacted.append(other.username)
                 other.notify(contact[4], contact[5], contact[2], contact[3])
                 other.status = 2
                 sql = "UPDATE user_id SET user_status = 2 WHERE name LIKE '%s';" % (other.username)
