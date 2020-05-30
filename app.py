@@ -76,7 +76,7 @@ class DB: # https://stackoverflow.com/questions/207981/how-to-enable-mysql-clien
 
 class User(UserMixin): # Base login system derived from code here: https://flask-login.readthedocs.io/en/latest/
     def __init__(self, user, status):
-        self.username = user[0]
+        self.username = user[0].lower()
         self.password = user[1]
         self.id = user[2]
         self.status = status
@@ -134,7 +134,7 @@ def display():
     # finds all data entries for a particular user ID
     form = DisplayForm()
     if form.validate_on_submit():
-        username = form.username.data
+        username = form.username.data.lower()
         tab = form.tab.data
         print("Getting location data for: ", username)
         sql = "SELECT latitude, longitude, date, time, time_at_location FROM user_info WHERE name LIKE '%s';" % (username)
@@ -180,7 +180,7 @@ def login():
     emsg = None
     if form.validate_on_submit():
         # assigns information received from website to variables
-        username = form.username.data
+        username = form.username.data.lower()
         password = form.password.data
         remember = form.remember_me.data
         user = get_user(username)
@@ -215,7 +215,7 @@ def register():
     if form.validate_on_submit():
         # Login and validate the user.
         # User should be an instance of your 'User' class
-        username = form.username.data
+        username = form.username.data.lower()
         password = form.password.data
 
         if get_user(username):
@@ -295,7 +295,7 @@ def send():
 def report():
     form = ReportForm()
     if form.validate_on_submit():
-        username = form.username.data
+        username = form.username.data.lower()
         print("Updating user infected status for: ", username)
 
         sql = "SELECT * FROM user_id WHERE name LIKE '%s';" % (username)
