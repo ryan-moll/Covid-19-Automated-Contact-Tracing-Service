@@ -75,10 +75,11 @@ class DB: # https://stackoverflow.com/questions/207981/how-to-enable-mysql-clien
         return results
 
 class User(UserMixin): # Base login system derived from code here: https://flask-login.readthedocs.io/en/latest/
-    def __init__(self, user):
+    def __init__(self, user, status):
         self.username = user[0]
         self.password = user[1]
         self.id = user[2]
+        self.status = status
 
     def verify_password(self, password):
         if self.password is None:
@@ -222,7 +223,7 @@ def register():
             return render_template('register.html', form=form, msg=emsg), 400
         else:
             newUser = create_user(username, generate_password_hash(password))
-            sql = "INSERT INTO user_id VALUES ('%s', '%s', '%s')" % (newUser.id, username, newUser.password)
+            sql = "INSERT INTO user_id VALUES ('%s', '%s', '%s', '%s')" % (newUser.id, username, newUser.password, 0) # 0 indicates that the user is not infected. They can change this if they are.
             db.query(sql)
             emsg = "You have successfully registered! You may now log in."
             return render_template('login.html', form=form, msg=emsg), 200 # Shouldn't this pass in the login form not the Register form?
@@ -257,7 +258,6 @@ def send():
     u_id = current_user.username
     date = data.get('date')[0]
     time = data.get('time')[0]
-    status = 0 # 0 indicates that the user is not infected. They can change this if they are.
 
     # if the newly received location and the newest entry in the database are within a meter
     # Calculates the time difference between the newly received entry
@@ -279,11 +279,13 @@ def send():
     else:
         time_at = 0
     location = salt(lati, longi)
-    lati = location[0]
-    longi = location[1]
+    saltLati = location[0]
+    saltLongi = location[1]
     # send new entry with all updated variables to the
-    sql = "INSERT INTO user_info VALUES ('%s', '%s',  '%s',  '%s', '%s', '%s', '%s')" % (u_id, date, time, lati, longi, time_at, status)
+    sql = "INSERT INTO user_info VALUES ('%s', '%s',  '%s',  '%s', '%s', '%s')" % (u_id, date, time, saltLati, saltLongi, time_at)
     db.query(sql)
+
+    contactTrace(u_id, date, time, lati, longi)
 
     return render_template('location.html'), 200
 
@@ -291,7 +293,6 @@ def send():
 @app.route('/report', methods=['GET', 'POST'])
 @login_required
 def report():
-    # Difference of 0.00002 in lat/long is 7.28346457 feet apart
     form = ReportForm()
     if form.validate_on_submit():
         username = form.username.data
@@ -300,31 +301,13 @@ def report():
         sql = "SELECT latitude, longitude, date, time, time_at_location FROM user_info WHERE name LIKE '%s';" % (username)
         results = db.get(sql)
         if results:
-            if tab:
-                txt = "User I.D.\tDate\tTime\tLatitude\tLongitude\tTime at Location\n"
-                usr = get_user(username)
-                for entry in results:
-                    txt = txt + "%s\t%s\t%s\t%s\t%s\t%s\n" % (usr.id, entry[2], entry[3], entry[0]+0.00175, entry[1]+0.00175, entry[4])
-                return Response(
-                    txt,
-                    mimetype="text/plain",
-                    headers={"Content-disposition":
-                             "attachment; filename=locations.txt"})
-            else:
-                csvList = ["lat,lng,name,color,note"]
-                for entry in results:
-                    csvList.append(",".join(map(str,[entry[0]+0.00175, entry[1]+0.00175, '', "ff0000", ' '.join(map(str,entry[2:]))])))
-                csv = "\n".join(csvList)
-                return Response(
-                    csv,
-                    mimetype="text/csv",
-                    headers={"Content-disposition":
-                             "attachment; filename=locations.csv"})
+            #TODO: Reporting logic here
+            return render_template('report.html', form=form)
         else:
-            emsg = "No user found. please regiser"
-            return render_template('login.html', msg=emsg)
+            emsg = "No user found. Check that you spelled the username correctly and try again."
+            return render_template('report.html', form, msg=emsg)
 
-    return render_template('display.html', form=form)
+    return render_template('report.html', form=form)
 
 #__________ERROR PAGES__________
 # Error handling routing
@@ -350,14 +333,8 @@ def error_400(error):
 #__________HELPER FUNCTIONS__________
 # Given a latitude and longitude it adds random numbers to specified positions to obscure the actual data
 def salt(lat, lng):
-    la = str(lat)
-    lo = str(lng)
-    laSplit = la.split('.')
-    loSplit = lo.split('.')
-    laSplit[1] = laSplit[1][:7]
-    loSplit[1] = loSplit[1][:7]
-    la = ".".join(laSplit)
-    lo = ".".join(loSplit)
+    la = floatTrunc(lat, 7)
+    lo = floatTrunc(lng, 7)
     laSum = int(la[-1])
     loSum = int(lo[-1])
     laList = list(la)
@@ -386,10 +363,10 @@ def unsalt(lat, lng):
             loList[i] = str((int(loList[i])+10-loSub)%10)
     return [float("".join(laList)), float("".join(loList))]
 
-def create_user(usr, pas, uid=None):
+def create_user(usr, pas, uid=None, status=0):
     if not uid:
         uid = uuid.uuid4()
-    user = User([usr, pas, uid])
+    user = User([usr, pas, uid], status)
     userObjects[uid] = user
     return user
 
@@ -398,6 +375,35 @@ def get_user(usr):
         if user.username == usr:
             return user
     return None
+
+# Takes a float or string float and truncates it to have 'deg' decimals
+def floatTrunc(num, deg):
+    if isinstance(num, float):
+        num = str(num)
+    numSplit = num.split('.')
+    numSplit[1] = numSplit[1][:deg]
+    num = ".".join(numSplit)
+    return num
+
+def contactTrace(name, date, time, lat, lng):
+    lat1 = float(floatTrunc(lat, 5))
+    lng1 = float(floatTrunc(lng, 5))
+    # print("First: " + name + str(lat1) + str(lng1) + date + time)
+    sql = "SELECT name, latitude, longitude FROM user_info WHERE time_to_sec(timediff('%s', time)) < 500 AND datediff('%s', date) LIKE 0 AND name NOT LIKE '%s'" % (time, date, name)
+    results = db.get(sql)
+    contacts = []
+    for entry in results:
+        loc = unsalt(entry[1], entry[2])
+        lat2 = float(floatTrunc(loc[0], 5))
+        lng2 = float(floatTrunc(loc[1], 5))
+        # print("Second: " + entry[0] + str(lat2) + str(lng2))
+        if abs(lat1-lat2) <= 0.00002 and abs(lng1-lng2) <= 0.00002: # Difference of 0.00002 in lat/long is 7.28346457 feet apart
+            contacts.append(entry[0])
+    saltLoc = salt(lat, lng)
+    for contact in contacts:
+        sql = "INSERT INTO contacts VALUES ('%s', '%s', '%s', '%s', '%s', '%s', '%s')" % (name, contact, date, time, saltLoc[0], saltLoc[1])
+        db.query(sql)
+    return 
 
 #__________STARTUP__________
 # TODO: How much of this can be moved to main?
@@ -414,7 +420,7 @@ userObjects = {}
 
 results = db.get("SELECT * FROM user_id")
 for user in results:
-    create_user(user[1], user[2], user[0])
+    create_user(user[1], user[2], user[0], user[3])
 
 #__________MAIN__________
 if __name__ == "__main__":
