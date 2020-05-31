@@ -17,7 +17,10 @@ from wtforms.validators import DataRequired
 from datetime import *
 
 
-# __________CLASSES__________
+###################################################
+#                     CLASSES
+###################################################
+
 class DB:  # https://stackoverflow.com/questions/207981/how-to-enable-mysql-client-auto-re-connect-with-mysqldb
     def __init__(self):
         conn = None
@@ -96,8 +99,10 @@ class User(UserMixin):  # Base login system derived from code here: https://flas
         return
 
 
+###################################################
+#                      FLASK
+###################################################
 
-# __________FLASK__________
 app = Flask(__name__)
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -111,34 +116,36 @@ def load_user(user_id):
     return userObjects[user_id]
 
 
+###################################################
+#                      FORMS
+###################################################
 
-#__________FORMS__________
-# TODO: Make a superclass for all of these forms to inherit from to reduce redundancy
-class LoginForm(FlaskForm):
+# most basic form version that is inherited by other form versions
+class Form(FlaskForm):
     username = StringField('Username', validators=[DataRequired()])
+
+
+class UserForm(Form):
     password = PasswordField('Password', validators=[DataRequired()])
     remember_me = BooleanField('Remember Me')
+
+
+class LoginForm(UserForm):
     submit = SubmitField('log in')
 
 
-class RegistrationForm(FlaskForm):
-    username = StringField('Username', validators=[DataRequired()])
-    password = PasswordField('Password', validators=[DataRequired()])
+class RegistrationForm(UserForm):
     email = StringField('Email', validators=[DataRequired()])
-    remember_me = BooleanField('Remember Me')
 
 
-class DisplayForm(FlaskForm):
-    username = StringField('Username', validators=[DataRequired()])
+class DisplayForm(Form):
     tab = BooleanField('Tab delimited output file')
 
 
-class ReportForm(FlaskForm):
-    username = StringField('Username', validators=[DataRequired()])
+###################################################
+#                     ROUTING
+###################################################
 
-
-
-# __________ROUTING__________
 # Handles routing to the home page
 @app.route("/")
 @app.route("/index")
@@ -147,18 +154,23 @@ def index():
     return render_template('location.html'), 200
 
 
+# finds and returns all data entries for a particular user ID
 @app.route('/display/', methods=('GET', 'POST'))
 def display():
-    # finds all data entries for a particular user ID
     form = DisplayForm()
+    # checks to see if a form is received from display.html
     if form.validate_on_submit():
         username = form.username.data.lower()
         tab = form.tab.data
         print("Getting location data for: ", username)
+        # pulls all entries tied the submitted username from the database
         sql = "SELECT latitude, longitude, date, time, time_at_location FROM user_info WHERE name LIKE '%s';" % (username)
         results = db.get(sql)
+        # if any entries are found
         if results:
-            if tab:
+            # Creates a text file of all entries of the user that were found in the database
+            # Two versions of files can be returned: tab delimited or csv formatted
+            if tab:  # tab delimited
                 txt = "User I.D.\tDate\tTime\tLatitude\tLongitude\tTime at Location\n"
                 usr = get_user(username)
                 for entry in results:
@@ -171,7 +183,7 @@ def display():
                     mimetype="text/plain",
                     headers={"Content-disposition":
                              "attachment; filename=locations.txt"})
-            else:
+            else:  # csv formatted
                 csvList = ["lat,lng,name,color,note"]
                 for entry in results:
                     location = unsalt(entry[0], entry[1])
@@ -191,14 +203,16 @@ def display():
     return render_template('display.html', form=form)
 
 
+# handles user login. Will always be prompted to log in before
 @app.route('/login/', methods=('GET', 'POST'))
 def login():
     if current_user.is_authenticated:  # If the user is already logged in, send them to the main page
         return render_template('location.html'), 200
+    # otherwise check to see if login.html sends a form to app.py
     form = LoginForm()
     emsg = None
     if form.validate_on_submit():
-        # Assign information received from website to variables
+        # Assign information received from login.html to variables
         username = form.username.data.lower()
         password = form.password.data
         remember = form.remember_me.data
@@ -222,13 +236,16 @@ def login():
         return render_template('login.html', form=form)
 
 
+# handles user log out
 @app.route('/logout')
 @login_required
 def logout():
     logout_user()
+    # once the user is logged out, it redirects to the log in screen
     return redirect(url_for('login'))
 
 
+# handles user registration. Usernames are not case sensitive
 @app.route('/register', methods=('GET', 'POST'))
 def register():
     # store id with random index number
@@ -309,7 +326,7 @@ def send():
 @app.route('/report', methods=['GET', 'POST'])
 @login_required
 def report():
-    form = ReportForm()
+    form = Form()
     if form.validate_on_submit():
         username = form.username.data.lower()
         infected = get_user(username)
@@ -348,9 +365,10 @@ def report():
     return render_template('report.html', form=form)
 
 
+###################################################
+#                  ERROR ROUTING
+###################################################
 
-# __________ERROR PAGES__________
-# Error handling routing
 @app.errorhandler(404)
 def error_404(error):
     return render_template('404.html'), 404
@@ -371,8 +389,10 @@ def error_400(error):
     return render_template('400.html'), 400
 
 
+###################################################
+#                HELPER FUNCTIONS
+###################################################
 
-# __________HELPER FUNCTIONS__________
 # Given a latitude and longitude it adds random numbers to specified positions to obscure the actual data
 def salt(lat, lng):
     la, lo = floatTrunc(lat, 7), floatTrunc(lng, 7)
@@ -406,7 +426,7 @@ def unsalt(lat, lng):
 
     return [float("".join(laList)), float("".join(loList))]
 
-
+# creates a User class object from inputted variables
 def create_user(usr, pas, email, uid=None, status=0):
     if not uid:
         uid = uuid.uuid4()
@@ -451,8 +471,10 @@ def contactTrace(name, date, time, lat, lng):
     return
 
 
+###################################################
+#                    STARTUP
+###################################################
 
-# __________STARTUP__________
 # TODO: How much of this can be moved to main?
 local = False
 if len(sys.argv) > 1:
@@ -470,8 +492,10 @@ for user in results:
     create_user(user[1], user[2], user[4], user[0], user[3])
 
 
+###################################################
+#                      MAIN
+###################################################
 
-# __________MAIN__________
 if __name__ == "__main__":
     if not local:
         app.run(debug=False)
