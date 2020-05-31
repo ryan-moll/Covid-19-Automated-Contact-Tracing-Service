@@ -41,8 +41,11 @@ Gets users location and sends a form containing that information to app.py every
     <!--<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>-->
 
 <script>
+////////////////////////////////////////
+//         Javascript Section
+////////////////////////////////////////
 
-// Get HTML elements for use later
+// Assign HTML Elements to variables
 var out = document.getElementById("demo");
 var sendButton = document.getElementById("send");
 var locationForm = document.getElementById("location");
@@ -54,18 +57,17 @@ var _date = document.getElementById("_date");
 
 document.getElementById("datetime").innerHTML = dt.toLocaleString();
 
-// conversion of date and time to preferred representations
+// conversion of date and time from datetime object to string
 // src https://www.w3schools.com/jsref/jsref_obj_date.asp
-var dd = String(dt.getDate()).padStart(2, '0');
-var mm = String(dt.getMonth()+1).padStart(2, '0');
+
+// date conversion to string
+dd = String(dt.getDate()).padStart(2, '0');
+mm = String(dt.getMonth()+1).padStart(2, '0');
 yyyy = dt.getFullYear();
 _date.value = yyyy + "-" + mm + "-" + dd;
 
-
-var hours = String(dt.getHours()).padStart(2,'0');
-var minutes = String(dt.getMinutes()).padStart(2,'0');
-var seconds = String(dt.getSeconds()).padStart(2,'0');
-time.value = hours + ":" + minutes + ":" + seconds;
+// time conversion to string
+time.value = timeToString(dt);
 
 if(out.value == undefined){ // If we have not gotten a latitude or longitude
     sendButton.disabled = true; // Disable the send button so null data can't be sent
@@ -101,17 +103,22 @@ function SendLocation() {
     // gets an updated date, time, and location
     getLocation();
     dt = new Date();
-    hours = String(dt.getHours()).padStart(2,'0');
-    minutes = String(dt.getMinutes()).padStart(2,'0');
-    seconds = String(dt.getSeconds()).padStart(2,'0');
-    time.value = hours + ":" + minutes + ":" + seconds;
-
+    // time conversion to string
+    time.value = timeToString(dt);
 
     sendButton.disabled = true;
     out.innerHTML = "Information Sent"; // If sent, the page is being returned to
     //sends information form the html file to the python file app.py
     locationForm.submit();
 }
+
+function timeToString(dt){
+    hours = String(dt.getHours()).padStart(2,'0');
+    minutes = String(dt.getMinutes()).padStart(2,'0');
+    seconds = String(dt.getSeconds()).padStart(2,'0');
+    return hours + ":" + minutes + ":" + seconds;
+}
+
 </script>
 </body>
 </html>
