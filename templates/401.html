@@ -1,10 +1,12 @@
 <html>
+<!-- Displays You are not authorized to access this page -->
 <head>
     <title>401 Error</title>
     <link rel="stylesheet" href="/static/style.css" />
 </head>
 
 <body>
+    <!-- Redirect banner. Provides links to other locations on the website based on whether the user is logged in -->
     <ul>
         {% if current_user.is_anonymous %}
             <li><a href="/display">Display</a></li>

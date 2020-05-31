@@ -9,6 +9,7 @@ Registration webpage. Contains a form that is handled by app.py on submission fo
     <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
+    <!-- Redirect banner. Provides links to other locations on the website based on whether the user is logged in-->
     <ul>
         {% if current_user.is_anonymous %}
             <li><a href="/display">Display</a></li>
@@ -22,6 +23,10 @@ Registration webpage. Contains a form that is handled by app.py on submission fo
     </ul>
     <h1>Welcome! Please create an account.</h1>
 
+    <!--
+    form declaration - sends information from location.html to app.py to create a new user in the user_id db
+    contains username, password, and email
+    -->
     <form method="POST" action="/register">
       {{ form.csrf_token }}
       {{ form.username.label }} {{ form.username(size=20) }}

@@ -9,6 +9,7 @@ Reporting webpage. Contains a form that is handled by app.py on submission for u
     <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
+    <!-- Redirect banner. Provides links to other locations on the website based on whether the user is logged in -->
     <ul>
         {% if current_user.is_anonymous %}
             <li><a href="/display">Display</a></li>
@@ -21,6 +22,7 @@ Reporting webpage. Contains a form that is handled by app.py on submission for u
         {% endif %}
     </ul>
     <h1>Report here if you have tested positive for Covid-19</h1>
+
     <!--
     creates a text box that the user puts their user name into
     it then sends that username ID to the python file to perform the query to the database

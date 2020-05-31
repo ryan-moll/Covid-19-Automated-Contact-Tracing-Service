@@ -11,6 +11,7 @@ Gets users location and sends a form containing that information to app.py every
     <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
+    <!-- Redirect banner. Provides links to other locations on the website based on whether the user is logged in-->
     <ul>
         {% if current_user.is_anonymous %}
             <li><a href="/display">Display</a></li>
@@ -22,6 +23,11 @@ Gets users location and sends a form containing that information to app.py every
             <li style="float:right"><a class="active" href="/logout">Log out</a></li>
         {% endif %}
     </ul>
+
+    <!--
+    Headers and User Information
+    Contains the date/time and location
+    -->
     <h1>Covid-19 Mobile Data Tracking</h1>
     <p>Date/Time: <span id="datetime"></span></p>
     <p>Click the button to get your coordinates.</p>
@@ -30,15 +36,17 @@ Gets users location and sends a form containing that information to app.py every
     <button id="send" onclick="SendLocation()">Send Location</button>
 
     <p id="demo"></p>
-
+    <!--
+    form declaration - sends information from location.html to app.py to create or update an entry in user_info
+    contains lat, long, date, time
+    username obtained through login system
+    -->
     <form id="location" action="/send_location" method="POST">
         <input type="hidden" id="lat" name="lat" value="null"><br>
         <input type="hidden" id="lng" name="lng" value="null"><br>
         <input type="hidden" id="_date" name="date" value="null"><br>
         <input type="hidden" id="time" name="time" value="null"><br>
     </form>
-
-    <!--<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>-->
 
 <script>
 ////////////////////////////////////////
@@ -60,10 +68,15 @@ document.getElementById("datetime").innerHTML = dt.toLocaleString();
 // conversion of date and time from datetime object to string
 // src https://www.w3schools.com/jsref/jsref_obj_date.asp
 
+
+////////////////////////////////////////
+//        Date/Time Conversion
+////////////////////////////////////////
+
 // date conversion to string
-dd = String(dt.getDate()).padStart(2, '0');
-mm = String(dt.getMonth()+1).padStart(2, '0');
-yyyy = dt.getFullYear();
+var dd = String(dt.getDate()).padStart(2, '0');
+var mm = String(dt.getMonth()+1).padStart(2, '0');
+var yyyy = dt.getFullYear();
 _date.value = yyyy + "-" + mm + "-" + dd;
 
 // time conversion to string
@@ -73,7 +86,11 @@ if(out.value == undefined){ // If we have not gotten a latitude or longitude
     sendButton.disabled = true; // Disable the send button so null data can't be sent
 }
 
-// simple get location program that calls show location child function
+////////////////////////////////////////
+//         Lat/Long Functions
+////////////////////////////////////////
+
+// get location uses the geolocation module of html to find the user's location. Uses helper function showPosition
 function getLocation() {
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(showPosition);
@@ -112,13 +129,16 @@ function SendLocation() {
     locationForm.submit();
 }
 
+////////////////////////////////////////
+//          Helper Function
+////////////////////////////////////////
+
 function timeToString(dt){
-    hours = String(dt.getHours()).padStart(2,'0');
-    minutes = String(dt.getMinutes()).padStart(2,'0');
-    seconds = String(dt.getSeconds()).padStart(2,'0');
+    var hours = String(dt.getHours()).padStart(2,'0');
+    var minutes = String(dt.getMinutes()).padStart(2,'0');
+    var seconds = String(dt.getSeconds()).padStart(2,'0');
     return hours + ":" + minutes + ":" + seconds;
 }
-
 </script>
 </body>
 </html>

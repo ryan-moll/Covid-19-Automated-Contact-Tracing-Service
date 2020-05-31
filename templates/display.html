@@ -10,6 +10,7 @@ Data is output as CSV or TXT files.
     <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
+    <!-- Redirect banner. Provides links to other locations on the website based on whether the user is logged in -->
     <ul>
         {% if current_user.is_anonymous %}
             <li><a href="/display">Display</a></li>
@@ -23,8 +24,8 @@ Data is output as CSV or TXT files.
     </ul>
     <h1>Location History</h1>
     <!--
-    creates a text box that the user puts their user name into
-    it then sends that username ID to the python file to perform the query to the database
+    form declaration - sends information from display.html to app.py to retrieve all user_info entries of one user
+    contains username and text document format style (tab)
     -->
     <form method='POST'>
       {{ form.csrf_token }}
