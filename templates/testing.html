@@ -9,7 +9,10 @@ Testing webpage. Allows an "admin" user to run tests to monitor the system
     <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
-    <!-- Redirect banner. Provides links to other locations on the website based on whether the user is logged in -->
+    <!-- 
+    Nav bar: Provides links to other locations on the website based on whether the user is logged in 
+    https://www.w3schools.com/css/css_navbar_horizontal.asp
+    -->
     <ul>
         <li><a href="/">Home</a></li>
         <li><a href="/display">Display</a></li>
@@ -18,8 +21,7 @@ Testing webpage. Allows an "admin" user to run tests to monitor the system
     </ul>
     <h1>Run Tests</h1>
     <!--
-    form declaration - sends information from display.html to app.py to retrieve all user_info entries of one user
-    contains username and text document format style (tab)
+    Form declaration: sends information from testing.html to app.py to run testing scripts
     -->
     <form method='POST'>
       {{ form.csrf_token }}
@@ -30,6 +32,9 @@ Testing webpage. Allows an "admin" user to run tests to monitor the system
 
     <p>Select which tests you would like to run.</p>
 
+    <!--
+    Message flashing: Prints closable messages to the user from app.py
+    -->
     <div>
         {% with messages = get_flashed_messages() %}
             {% if messages %}

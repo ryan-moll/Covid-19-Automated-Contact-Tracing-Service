@@ -10,7 +10,10 @@ Data is output as CSV or TXT files.
     <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
-    <!-- Redirect banner. Provides links to other locations on the website based on whether the user is logged in -->
+    <!-- 
+    Nav bar: Provides links to other locations on the website based on whether the user is logged in 
+    https://www.w3schools.com/css/css_navbar_horizontal.asp
+    -->
     <ul>
         {% if current_user.is_anonymous %}
             <li><a href="/display">Display</a></li>
@@ -24,7 +27,7 @@ Data is output as CSV or TXT files.
     </ul>
     <h1>Location History</h1>
     <!--
-    form declaration - sends information from display.html to app.py to retrieve all user_info entries of one user
+    Form declaration: sends information from display.html to app.py to retrieve all user_info entries of one user
     contains username and text document format style (tab)
     -->
     <form method='POST'>
@@ -36,6 +39,9 @@ Data is output as CSV or TXT files.
 
     <p>Search your username to get location data as a CSV file. Import that file at maps.co to view your data on a map.</p>
 
+    <!--
+    Message flashing: Prints closable messages to the user from app.py
+    -->
     <div>
         {% with messages = get_flashed_messages() %}
             {% if messages %}

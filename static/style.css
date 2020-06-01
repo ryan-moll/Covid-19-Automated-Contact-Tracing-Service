@@ -43,6 +43,8 @@ li a:hover:not(.active) {
   text-decoration: none;
   display: inline-block;
   font-size: 16px;
+  margin-left: 15px;
+  margin-top: 25px;
 }
 
 /* https://www.w3schools.com/howto/howto_js_alert.asp */

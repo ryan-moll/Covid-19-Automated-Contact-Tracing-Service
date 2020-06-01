@@ -131,7 +131,7 @@ class UserForm(Form):
 
 
 class LoginForm(UserForm):
-    submit = SubmitField('log in')
+    submit = SubmitField('log in') # Not sure this is ever used
 
 
 class RegistrationForm(UserForm):
@@ -144,6 +144,9 @@ class DisplayForm(Form):
 class TestingForm(FlaskForm):
     unit = BooleanField('Unit tests')
     database = BooleanField('Database connection test')
+
+class ReportForm(FlaskForm):
+    verify = BooleanField('Check here to certify that you understand that submitting this will contact anyone you have been in contact with')
 
 
 ###################################################
@@ -329,14 +332,20 @@ def send():
 @app.route('/report', methods=['GET', 'POST'])
 @login_required
 def report():
-    form = Form()
+    form = ReportForm()
     if form.validate_on_submit():  # Checks to see if a valid form is received from report.html
-        username = form.username.data.lower()
-        infected = get_user(username)  # Get the User() object for the given username
-        if not infected:  # There is no existing user with the given username
-            emsg = "No user found. Check that you spelled the username correctly and try again."
+        if not form.verify.data:
+            emsg = "Please check the verification box before submitting."
             flash(emsg)
             return render_template('report.html', form=form)
+        # username = form.username.data.lower()
+        # infected = get_user(username)  # Get the User() object for the given username
+        # if not infected:  # There is no existing user with the given username
+        #     emsg = "No user found. Check that you spelled the username correctly and try again."
+        #     flash(emsg)
+        #     return render_template('report.html', form=form)
+        username = current_user.username
+        infected = get_user(username)
 
         sql = "UPDATE user_id SET user_status = 1 WHERE name LIKE '%s';" % (username)
         db.query(sql)  # Update the user status in the database to '1' to indicate thate they're infected
@@ -395,8 +404,6 @@ def testing():
             emsg = "Database connection test passed."
             flash(emsg)
     return render_template('testing.html', form=form)
-
-    
 
 
 ###################################################

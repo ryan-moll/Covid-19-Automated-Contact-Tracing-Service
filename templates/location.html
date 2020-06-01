@@ -11,7 +11,10 @@ Gets users location and sends a form containing that information to app.py every
     <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
-    <!-- Redirect banner. Provides links to other locations on the website based on whether the user is logged in-->
+    <!-- 
+    Nav bar: Provides links to other locations on the website based on whether the user is logged in
+    https://www.w3schools.com/css/css_navbar_horizontal.asp
+    -->
     <ul>
         {% if current_user.is_anonymous %}
             <li><a href="/display">Display</a></li>
@@ -37,7 +40,7 @@ Gets users location and sends a form containing that information to app.py every
 
     <p id="demo"></p>
     <!--
-    form declaration - sends information from location.html to app.py to create or update an entry in user_info
+    Form declaration: sends information from location.html to app.py to create or update an entry in user_info
     contains lat, long, date, time
     username obtained through login system
     -->
@@ -48,6 +51,9 @@ Gets users location and sends a form containing that information to app.py every
         <input type="hidden" id="time" name="time" value="null"><br>
     </form>
 
+    <!--
+    Message flashing: Prints closable messages to the user from app.py
+    -->
     <div>
         {% with messages = get_flashed_messages() %}
             {% if messages %}

@@ -9,7 +9,10 @@ Registration webpage. Contains a form that is handled by app.py on submission fo
     <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
-    <!-- Redirect banner. Provides links to other locations on the website based on whether the user is logged in-->
+    <!-- 
+    Nav bar: Provides links to other locations on the website based on whether the user is logged in
+    https://www.w3schools.com/css/css_navbar_horizontal.asp
+    -->
     <ul>
         {% if current_user.is_anonymous %}
             <li><a href="/display">Display</a></li>
@@ -24,7 +27,7 @@ Registration webpage. Contains a form that is handled by app.py on submission fo
     <h1>Welcome! Please create an account.</h1>
 
     <!--
-    form declaration - sends information from location.html to app.py to create a new user in the user_id db
+    Form declaration: sends information from location.html to app.py to create a new user in the user_id db
     contains username, password, and email
     -->
     <form method="POST" action="/register">
@@ -35,6 +38,9 @@ Registration webpage. Contains a form that is handled by app.py on submission fo
         <input type="submit" value="Register">
     </form>
 
+    <!--
+    Message flashing: Prints closable messages to the user from app.py
+    -->
     <div>
         {% with messages = get_flashed_messages() %}
             {% if messages %}
