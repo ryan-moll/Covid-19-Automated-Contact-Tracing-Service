@@ -38,5 +38,20 @@ Login webpage. Contains a form that is handled by app.py on submission for users
 
     </br>
     <a href="/register" class="button">New user? Register here!</a>
+
+    <div>
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert">
+                        <span class="closebtn" onclick="this.parentElement.style.display='none';">&times;</span>
+                        {{message}}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        {% block body %}{% endblock %}
+    </div>
 </body>
 </html>

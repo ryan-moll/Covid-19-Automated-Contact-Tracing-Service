@@ -35,5 +35,20 @@ Data is output as CSV or TXT files.
     </form>
 
     <p>Search your username to get location data as a CSV file. Import that file at maps.co to view your data on a map.</p>
+
+    <div>
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert">
+                        <span class="closebtn" onclick="this.parentElement.style.display='none';">&times;</span>
+                        {{message}}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        {% block body %}{% endblock %}
+    </div>
 </body>
 </html>

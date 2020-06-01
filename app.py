@@ -158,114 +158,113 @@ def index():
 @app.route('/display/', methods=('GET', 'POST'))
 def display():
     form = DisplayForm()
-    # checks to see if a form is received from display.html
-    if form.validate_on_submit():
+    if form.validate_on_submit():  # Checks to see if a valid form is received from display.html
         username = form.username.data.lower()
         tab = form.tab.data
-        print("Getting location data for: ", username)
-        # pulls all entries tied the submitted username from the database
+        # Pulls all location entries tied the submitted username from the database
         sql = "SELECT latitude, longitude, date, time, time_at_location FROM user_info WHERE name LIKE '%s';" % (username)
         results = db.get(sql)
-        # if any entries are found
-        if results:
-            # Creates a text file of all entries of the user that were found in the database
+        if results:  # If any entries are found the requested user
             # Two versions of files can be returned: tab delimited or csv formatted
-            if tab:  # tab delimited
+            if tab:  # User requested Tab delimited output file
                 txt = "User I.D.\tDate\tTime\tLatitude\tLongitude\tTime at Location\n"
                 usr = get_user(username)
+                # Create a string of all entries of the user that were found in the database
                 for entry in results:
                     location = unsalt(entry[0], entry[1])
                     lat = location[0]
                     lng = location[1]
                     txt = txt + "%s\t%s\t%s\t%s\t%s\t%s\n" % (usr.id, entry[2], entry[3], lat+0.00175, lng+0.00175, entry[4])
+                # Convert that string to a text file and return it to the user
                 return Response(
                     txt,
                     mimetype="text/plain",
                     headers={"Content-disposition":
                              "attachment; filename=locations.txt"})
-            else:  # csv formatted
+            else:  # User requested CSV formatted output file
                 csvList = ["lat,lng,name,color,note"]
+                # Create a list of strings of all entries of the user that were found in the database
                 for entry in results:
                     location = unsalt(entry[0], entry[1])
                     lat = location[0]
                     lng = location[1]
                     csvList.append(",".join(map(str,[lat+0.00175, lng+0.00175, '', "ff0000", ' '.join(map(str,entry[2:]))])))
-                csv = "\n".join(csvList)
+                csv = "\n".join(csvList)  # Turn that list of strings into a single string
+                # Convert that string to a text file and return it to the user
                 return Response(
                     csv,
                     mimetype="text/csv",
                     headers={"Content-disposition":
                              "attachment; filename=locations.csv"})
-        else:
+        else:  # There was no user with the given username
             emsg = "No user found. Check that you spelled the username correctly and try again."
-            return render_template('display.html', form=form, msg=emsg)
+            flash(emsg)
+            return render_template('display.html', form=form)
 
     return render_template('display.html', form=form)
 
 
-# handles user login. Will always be prompted to log in before
+# Handles the user login page and logs in users
 @app.route('/login/', methods=('GET', 'POST'))
 def login():
     if current_user.is_authenticated:  # If the user is already logged in, send them to the main page
         return render_template('location.html'), 200
-    # otherwise check to see if login.html sends a form to app.py
     form = LoginForm()
-    emsg = None
-    if form.validate_on_submit():
+    if form.validate_on_submit():  # Otherwise check to see if login.html sent a form to app.py
         # Assign information received from login.html to variables
         username = form.username.data.lower()
         password = form.password.data
         remember = form.remember_me.data
         user = get_user(username)
 
-        if user:
-            if user.verify_password(password):
-                if remember:
+        if user:  # There is an existing user with the provided username
+            if user.verify_password(password):  # The provided password is correct
+                if remember:  # The user checked 'remember me'
                     login_user(user, remember=True)
-                else:
+                else:  # The user did not check 'remember me'
                     login_user(user)
-                return render_template('location.html', form=form, username=username) #Shouldn't this form not be the login form?
-            else:
+                return render_template('location.html', username=username)
+            else:  # The provided password is incorrect
                 emsg = "Error: Password incorrect."
                 flash(emsg)
-                return render_template('login.html', form=form, msg=emsg)
-        else:
-            emsg = "No user found. Please regiser if you have not."
-            return render_template('login.html', form=form, msg=emsg)
+                return render_template('login.html', form=form)
+        else:  # There is no existing user with the provided username
+            emsg = "No user found with that username. Please regiser if you have not."
+            flash(emsg)
+            return render_template('login.html', form=form)
     else:
         return render_template('login.html', form=form)
 
 
-# handles user log out
+# Handles user log out
 @app.route('/logout')
 @login_required
 def logout():
     logout_user()
-    # once the user is logged out, it redirects to the log in screen
-    return redirect(url_for('login'))
+    return redirect(url_for('login'))  # Once the user is logged out, redirect them to the log in screen
 
 
-# handles user registration. Usernames are not case sensitive
+# Handles user registration
 @app.route('/register', methods=('GET', 'POST'))
 def register():
-    # store id with random index number
     form = RegistrationForm()
-    if form.validate_on_submit():
-        # Login and validate the user.
-        # User should be an instance of your 'User' class
+    if form.validate_on_submit():  # Checks to see if a valid form is received from register.html
         username = form.username.data.lower()
         password = form.password.data
         email = form.email.data
 
-        if get_user(username):
+        if get_user(username):  # There is an existing user with the provided username
             emsg = "That username is taken. Try another one."
-            return render_template('register.html', form=form, msg=emsg), 400
-        else:
-            newUser = create_user(username, generate_password_hash(password), email)
+            flash(emsg)
+            return render_template('register.html', form=form), 400
+        else:  # The username is available
+            newUser = create_user(username, generate_password_hash(password), email)  # Create a new user object with the given info
             sql = "INSERT INTO user_id VALUES ('%s', '%s', '%s', '%s', '%s')" % (newUser.id, username, newUser.password, 0, email) # 0 indicates that the user is not infected. They can change this if they are.
-            db.query(sql)
+            db.query(sql)  # Add the new user to the database
             emsg = "You have successfully registered! You may now log in."
-            return render_template('login.html', form=form, msg=emsg), 200 # Shouldn't this pass in the login form not the Register form?
+            flash(emsg)
+            form = LoginForm()
+            return render_template('login.html', form=form), 200  # Direct the user to the login page
     else:
         return render_template('register.html', form=form)
 
@@ -277,47 +276,47 @@ def send():
     data = request.form.to_dict(flat=False) # Request form from website containing user information and create a dictionary using it
     date, time = data.get('date')[0], data.get('time')[0]
     sql = "SELECT latitude, longitude, date, time, time_at_location FROM user_info WHERE name LIKE '%s';" % (current_user.username)
-    results = db.get(sql) # Query the database for entries from a particular user
+    results = db.get(sql)  # Query the database for entries from the specified user
 
     pastLat = pastLng = 0
-    if results is (): # If no entries are found in the database (for new users)
+    if results is ():  # If no entries are found in the database (for new users)
         past = (0, 0, datetime.today().date(), timedelta(0, 86400), 0) # Create dummy location
     else:
-        past = results[-1] # Select most recent entry
+        past = results[-1]  # Select most recent entry
         loc = unsalt(past[0], past[1])
         pastLat, pastLng = loc[0], loc[1]
 
-    if 'null' in data.get('lat')[0] or 'null' in data.get('lng')[0]: # Check to make sure that the latitude nad longitude received from the user are not null
-        lati, longi = past[0], past[1]
+    if 'null' in data.get('lat')[0] or 'null' in data.get('lng')[0]:  # Check to make sure that the latitude and longitude received from the user are not null
+        lati, longi = past[0], past[1]  # If they are just reuse the location values from the last entry
     else:
         lati, longi = data.get('lat')[0], data.get('lng')[0]
 
-    '''
+    """
     If the newly received location and the newest entry in the database are within a meter, calculate the time difference 
     between the newly received entry and the most recent entry in the database from that particular user. Since the time 
     sent from the website is a string and the time in the database is a timedelta, the time from the website is converted to 
     a datetime and the two are subtracted and then added to the time at loc. Otherwise location is different so time_at is 0 
-    '''
+    """
     if abs(float(pastLat) - float(lati)) <= .00001 and abs(float(pastLng) - float(longi)) <= .00001:
-        inter_time = time[0:2]+time[3:5] + time[6:8] # How to parse colon datetimes https://stackoverflow.com/questions/30999230/how-to-parse-timezone-with-colon
+        inter_time = time[0:2]+time[3:5] + time[6:8]  # How to parse colon datetimes https://stackoverflow.com/questions/30999230/how-to-parse-timezone-with-colon
         data_dt = datetime.strptime(inter_time, '%H%M%S').time()
         past_time = (datetime.min + past[3]).time()
 
-        difference = datetime.combine(datetime.today(), data_dt) - datetime.combine(datetime.today(), past_time) # Concept for difference based on https://stackoverflow.com/questions/9578906/easiest-way-to-combine-date-and-time-strings-to-single-datetime-object-using-pyt
+        difference = datetime.combine(datetime.today(), data_dt) - datetime.combine(datetime.today(), past_time)  # Concept for difference based on https://stackoverflow.com/questions/9578906/easiest-way-to-combine-date-and-time-strings-to-single-datetime-object-using-pyt
         print(difference.total_seconds() % 3600)
 
         # Timedelta to minutes from https://stackoverflow.com/questions/14190045/how-do-i-convert-datetime-timedelta-to-minutes-hours-in-python/43965102
-        time_at = int(past[4]) + (difference.total_seconds() % 3600)/600 # Make it a difference between date's time and past's time
+        time_at = int(past[4]) + (difference.total_seconds() % 3600)/600  # Make it a difference between date's time and past's time
         sql = "UPDATE user_info SET time_at_location = '%s' WHERE name LIKE '%s' ORDER BY date DESC, time DESC LIMIT 1;" % (time_at, current_user.username)
-        db.query(sql) # Update time_at_location for the previous entry
+        db.query(sql)  # Update time_at_location for the previous entry
     else:  # The user moved more than a meter
         time_at = 0
-        location = salt(lati, longi) # Salt location data before storing it in the DB
+        location = salt(lati, longi)  # Salt location data before storing it in the DB
         saltLati, saltLongi = location[0], location[1]
         sql = "INSERT INTO user_info VALUES ('%s', '%s',  '%s',  '%s', '%s', '%s')" % (current_user.username, date, time, saltLati, saltLongi, time_at)
         db.query(sql)  # Send new entry with all updated variables to the DB
 
-    contactTrace(current_user.username, date, time, lati, longi) # Check if this entry is overlaps with any other users last entries
+    contactTrace(current_user.username, date, time, lati, longi)  # Check if this entry is overlaps with any other users last entries
 
     return render_template('location.html'), 200
 
@@ -327,40 +326,42 @@ def send():
 @login_required
 def report():
     form = Form()
-    if form.validate_on_submit():
+    if form.validate_on_submit():  # Checks to see if a valid form is received from report.html
         username = form.username.data.lower()
-        infected = get_user(username)
-        if not infected:
+        infected = get_user(username)  # Get the User() object for the given username
+        if not infected:  # There is no existing user with the given username
             emsg = "No user found. Check that you spelled the username correctly and try again."
-            return render_template('report.html', form, msg=emsg)
+            flash(emsg)
+            return render_template('report.html', form=form)
 
-        print("Updating user infected status for: ", username)
-        infected.status = 1
+        sql = "UPDATE user_id SET user_status = 1 WHERE name LIKE '%s';" % (username)
+        db.query(sql)  # Update the user status in the database to '1' to indicate thate they're infected
+        infected.status = 1  # Update the user status in their User() object too
         sql = "SELECT * FROM contacts WHERE personA LIKE '%s' OR personB LIKE '%s';" % (username, username)
-        results = db.get(sql)
+        results = db.get(sql)  # Get a list of every time the infected user has come in contact with another user
 
-        if results:
-            sql = "UPDATE user_id SET user_status = 1 WHERE name LIKE '%s';" % (username)
-            db.query(sql)
-            contacted = [username]
+        if results:  # The user has come in contact with other users
+            contacted = [username]  # List to keep track of who has already been emailed
             for contact in results:
-                if contact[0] == username:
+                if contact[0] == username:  # Get the user who was contacted
                     other = get_user(contact[1])
                 else:
                     other = get_user(contact[0])
-                if other.username in contacted:
-                    continue
+                if other.username in contacted:  # This user was in contact with the infected person multiple times
+                    continue  # Skip the rest so they aren't emailed numerous times
                 contacted.append(other.username)
-                other.notify(contact[4], contact[5], contact[2], contact[3])
-                other.status = 2
+                other.notify(contact[4], contact[5], contact[2], contact[3])  # Email the contacted person
                 sql = "UPDATE user_id SET user_status = 2 WHERE name LIKE '%s';" % (other.username)
-                db.query(sql)
-            emsg = "Your status has been updated. Thank you."
-            return render_template('report.html', form=form, msg=emsg)
+                db.query(sql)  # Update the user status in the database to '2' to indicate thate they were in contact with the infected
+                other.status = 2  # Update the user status in their User() object too
+            emsg = "Your status has been updated and users you were in contact with have been notified. Thank you."
+            flash(emsg)
+            return render_template('report.html', form=form)
         else:
             print("No users in contact with the infected user.")
-            emsg = "Your status has been updated. Thank you."
-            return render_template('report.html', form=form, msg=emsg)
+            emsg = "Your status has been updated and users you were in contact with have been notified. Thank you."
+            flash(emsg)
+            return render_template('report.html', form=form)
 
     return render_template('report.html', form=form)
 
@@ -393,81 +394,82 @@ def error_400(error):
 #                HELPER FUNCTIONS
 ###################################################
 
-# Given a latitude and longitude it adds random numbers to specified positions to obscure the actual data
+# Given a latitude and longitude it modifies their digits to obscure the actual data
 def salt(lat, lng):
-    la, lo = floatTrunc(lat, 7), floatTrunc(lng, 7)
-    laSum, loSum = int(la[-1]), int(lo[-1])
-    laList, loList = list(la), list(lo)
+    la, lo = floatTrunc(lat, 7), floatTrunc(lng, 7)  # Reformat the lat and long to have 7 decimal places
+    laSum, loSum = int(la[-1]), int(lo[-1])  # Get the last digit from the lat and long
+    laList, loList = list(la), list(lo)  # Convert the lat and long strings to lists of characters
 
-    for i in range(len(laList)-1):
-        if laList[i].isdigit():
-            laList[i] = str((int(laList[i])+laSum)%10)
+    for i in range(len(laList)-1):  # Loop through each character in the latitude
+        if laList[i].isdigit():  # If the character is not a '-' or '.'
+            laList[i] = str((int(laList[i])+laSum)%10)  # Add the last digit of lat to that digit
 
-    for i in range(len(loList)-1):
-        if loList[i].isdigit():
-            loList[i] = str((int(loList[i])+loSum)%10)
+    for i in range(len(loList)-1):  # Loop through each character in the longitude
+        if loList[i].isdigit():  # If the character is not a '-' or '.'
+            loList[i] = str((int(loList[i])+loSum)%10)  # Add the last digit of lng to that digit
 
-    return ["".join(laList), "".join(loList)]
+    return ["".join(laList), "".join(loList)]  # Return the lat and long in a list as strings
 
 
 # Given a salted latitude and longitude, return the actual data
 def unsalt(lat, lng):
-    la, lo = str(lat), str(lng)
-    laList, loList = list(la), list(lo)
-    laSub, loSub = int(la[-1]), int(lo[-1])
+    la, lo = str(lat), str(lng)  # Convert the lat and long inputs from floats to strings
+    laList, loList = list(la), list(lo)  # Convert the lat and long strings to lists of characters
+    laSub, loSub = int(la[-1]), int(lo[-1])  # Get the last digit from the lat and long
 
-    for i in range(len(laList)-1):
-        if laList[i].isdigit():
-            laList[i] = str((int(laList[i])+10-laSub)%10)
+    for i in range(len(laList)-1):  # Loop through each character in the latitude
+        if laList[i].isdigit():  # If the character is not a '-' or '.'
+            laList[i] = str((int(laList[i])+10-laSub)%10)  # Subtract the last digit of lat from that digit
 
-    for i in range(len(loList)-1):
-        if loList[i].isdigit():
-            loList[i] = str((int(loList[i])+10-loSub)%10)
+    for i in range(len(loList)-1):  # Loop through each character in the longitude
+        if loList[i].isdigit():  # If the character is not a '-' or '.'
+            loList[i] = str((int(loList[i])+10-loSub)%10)  # Subtract the last digit of lng from that digit
 
-    return [float("".join(laList)), float("".join(loList))]
+    return [float("".join(laList)), float("".join(loList))]  # Return the lat and long in a list as floats
 
-# creates a User class object from inputted variables
+# Creates a User class object from inputted variables and returns it
 def create_user(usr, pas, email, uid=None, status=0):
-    if not uid:
-        uid = uuid.uuid4()
-    user = User([usr.lower(), pas, uid], status, email)
-    userObjects[uid] = user
-    return user
+    if not uid:  # If there was no unicode user id provided
+        uid = uuid.uuid4()  # Generate one
+    user = User([usr.lower(), pas, uid], status, email)  # Create an object of the User() class
+    userObjects[uid] = user  # Add that object to the running list of user objects
+    return user  # Return that object
 
 
 # Given a username, it returns a User object
 def get_user(usr):
-    usr = usr.lower()
-    for user in userObjects.values():
-        if user.username == usr:
-            return user
-    return None
+    usr = usr.lower()  # Lowercase the inputted username in case it isn't already
+    for user in userObjects.values():  # Loop through every item in the list of all User() objects
+        if user.username == usr:  # If the User() object name matches the provided username
+            return user  # Return that User() object
+    return None  # No User() object was found with the given username
 
 
 # Takes a float or string float and truncates it to have 'deg' decimals
 def floatTrunc(num, deg):
-    if isinstance(num, float):
-        num = str(num)
-    numSplit = num.split('.')
-    numSplit[1] = numSplit[1][:deg]
-    num = ".".join(numSplit)
+    if isinstance(num, float):  # If the provided number is a float
+        num = str(num)  # Convert it to a string
+    numSplit = num.split('.')  # Split the number into decimals and integers
+    numSplit[1] = numSplit[1][:deg]  # Truncate the decimals to length 'deg'
+    num = ".".join(numSplit)  # Rejoin the integers and decimals
     return num
 
 
+# Given a location entry, check if it overlaps with any other location entries from the last 5 minutes
 def contactTrace(name, date, time, lat, lng):
-    lat1, lng1 = float(floatTrunc(lat, 5)), float(floatTrunc(lng, 5))
+    lat1, lng1 = float(floatTrunc(lat, 5)), float(floatTrunc(lng, 5))  # Truncate the latitude and longitude to 5 decimals and convert them to float
     sql = "SELECT name, latitude, longitude FROM user_info WHERE time_to_sec(timediff('%s', time)) < 500 AND datediff('%s', date) LIKE 0 AND name NOT LIKE '%s'" % (time, date, name)
-    results = db.get(sql)
+    results = db.get(sql)  # Get every entry from the last 5 minutes
     contacts = []
-    for entry in results:
-        loc = unsalt(entry[1], entry[2])
-        lat2, lng2 = float(floatTrunc(loc[0], 5)), float(floatTrunc(loc[1], 5))
+    for entry in results:  # For every location entry added in the last 5 minutes
+        loc = unsalt(entry[1], entry[2])  # Unsalt the location data
+        lat2, lng2 = float(floatTrunc(loc[0], 5)), float(floatTrunc(loc[1], 5))  # Truncate the latitude and longitude to 5 decimals and convert them to float
         if abs(lat1-lat2) <= 0.00002 and abs(lng1-lng2) <= 0.00002: # Difference of 0.00002 in lat/long is 7.28346457 feet apart
-            contacts.append(entry[0])
-    saltLoc = salt(lat, lng)
-    for contact in contacts:
+            contacts.append(entry[0])  # If the users were within 7.283 feet, count that as a contact
+    saltLoc = salt(lat, lng)  # Salt the submitted user location
+    for contact in contacts:  # For every contact from the last 5 minutes
         sql = "INSERT INTO contacts VALUES ('%s', '%s', '%s', '%s', '%s', '%s')" % (name, contact, date, time, saltLoc[0], saltLoc[1])
-        db.query(sql)
+        db.query(sql)  # Add it to the 'contacts' table in the database
     return
 
 
@@ -476,20 +478,20 @@ def contactTrace(name, date, time, lat, lng):
 ###################################################
 
 # TODO: How much of this can be moved to main?
-local = False
-if len(sys.argv) > 1:
-    if sys.argv[1] == "local":
+local = False  # Global keyword to track if app.py is being run in production or local
+if len(sys.argv) > 1:  # If there were command line arguments provided when running app.py
+    if sys.argv[1] == "local":  # Check if "local" was provided as an arg
         print("Running on local...")
         local = True
 
-db = DB()
-db.connect()
+db = DB()  # Create in instance of the DB() class for managing the database connection
+db.connect()  # Connect to the database
 
-userObjects = {}
+userObjects = {}  # Dict to keep track of User() class objects
 
-results = db.get("SELECT * FROM user_id")
-for user in results:
-    create_user(user[1], user[2], user[4], user[0], user[3])
+results = db.get("SELECT * FROM user_id")  # Load all existing users from the database
+for user in results:  # For every existing user
+    create_user(user[1], user[2], user[4], user[0], user[3])  # Create a User() object
 
 
 ###################################################
