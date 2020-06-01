@@ -306,7 +306,7 @@ def send():
         print(difference.total_seconds() % 3600)
 
         # Timedelta to minutes from https://stackoverflow.com/questions/14190045/how-do-i-convert-datetime-timedelta-to-minutes-hours-in-python/43965102
-        time_at = int(past[4]) + (difference.total_seconds() % 3600)/600  # Make it a difference between date's time and past's time
+        time_at = int(past[4]) + (difference.total_seconds() % 3600)/60  # Make it a difference between date's time and past's time
         sql = "UPDATE user_info SET time_at_location = '%s' WHERE name LIKE '%s' ORDER BY date DESC, time DESC LIMIT 1;" % (time_at, current_user.username)
         db.query(sql)  # Update time_at_location for the previous entry
     else:  # The user moved more than a meter
