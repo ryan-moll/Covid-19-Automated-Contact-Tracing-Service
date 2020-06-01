@@ -1,0 +1,48 @@
+<!--
+___testing.html___
+Testing webpage. Allows an "admin" user to run tests to monitor the system
+-->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Testing</title>
+    <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+    <!-- Redirect banner. Provides links to other locations on the website based on whether the user is logged in -->
+    <ul>
+        <li><a href="/">Home</a></li>
+        <li><a href="/display">Display</a></li>
+        <li><a href="/report">Reporting</a></li>
+        <li style="float:right"><a class="active" href="/logout">Log out</a></li>
+    </ul>
+    <h1>Run Tests</h1>
+    <!--
+    form declaration - sends information from display.html to app.py to retrieve all user_info entries of one user
+    contains username and text document format style (tab)
+    -->
+    <form method='POST'>
+      {{ form.csrf_token }}
+      {{ form.unit.label }} {{ form.unit(size=20) }}
+      {{ form.database.label }} {{ form.database(size=20) }}
+    <input type="submit" value="Search">
+    </form>
+
+    <p>Select which tests you would like to run.</p>
+
+    <div>
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert">
+                        <span class="closebtn" onclick="this.parentElement.style.display='none';">&times;</span>
+                        {{message}}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        {% block body %}{% endblock %}
+    </div>
+</body>
+</html>

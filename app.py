@@ -141,6 +141,10 @@ class RegistrationForm(UserForm):
 class DisplayForm(Form):
     tab = BooleanField('Tab delimited output file')
 
+class TestingForm(FlaskForm):
+    unit = BooleanField('Unit tests')
+    database = BooleanField('Database connection test')
+
 
 ###################################################
 #                     ROUTING
@@ -259,7 +263,7 @@ def register():
             return render_template('register.html', form=form), 400
         else:  # The username is available
             newUser = create_user(username, generate_password_hash(password), email)  # Create a new user object with the given info
-            sql = "INSERT INTO user_id VALUES ('%s', '%s', '%s', '%s', '%s')" % (newUser.id, username, newUser.password, 0, email) # 0 indicates that the user is not infected. They can change this if they are.
+            sql = "INSERT INTO user_id VALUES ('%s', '%s', '%s', '%s', '%s');" % (newUser.id, username, newUser.password, 0, email) # 0 indicates that the user is not infected. They can change this if they are.
             db.query(sql)  # Add the new user to the database
             emsg = "You have successfully registered! You may now log in."
             flash(emsg)
@@ -313,7 +317,7 @@ def send():
         time_at = 0
         location = salt(lati, longi)  # Salt location data before storing it in the DB
         saltLati, saltLongi = location[0], location[1]
-        sql = "INSERT INTO user_info VALUES ('%s', '%s',  '%s',  '%s', '%s', '%s')" % (current_user.username, date, time, saltLati, saltLongi, time_at)
+        sql = "INSERT INTO user_info VALUES ('%s', '%s',  '%s',  '%s', '%s', '%s');" % (current_user.username, date, time, saltLati, saltLongi, time_at)
         db.query(sql)  # Send new entry with all updated variables to the DB
 
     contactTrace(current_user.username, date, time, lati, longi)  # Check if this entry is overlaps with any other users last entries
@@ -364,6 +368,35 @@ def report():
             return render_template('report.html', form=form)
 
     return render_template('report.html', form=form)
+
+
+# Testing page for devs to test database connection and run unit tests
+@app.route('/testing', methods=['GET', 'POST'])
+@login_required
+def testing():
+    if current_user.username != "admin":  # If the user logged in is not an admin
+        return render_template('location.html'), 200  # Send them to the home page
+    form = TestingForm()
+    if form.validate_on_submit:  # The admin requested to run tests
+        unit = form.unit.data
+        database = form.database.data
+        if unit:  # The admin requested a unit test
+            assert salt("12.9876543", "-321.7654321") == ["45.2109873","-432.8765431"], "Error [salt()]: Should be ['45.2109873','-432.8765431']"
+            assert unsalt(45.2109873, -543.8765432) == [12.9876543,-321.6543212], "Error [unsalt()]: Should be [12.9876543,-321.6543210]"
+            assert floatTrunc(12.3456789, 4) == "12.3456", "Error [floatTrunc()]: Should be '12.3456'"
+            assert floatTrunc(-987.654321, 1) == "-987.6", "Error [floatTrunc()]: Should be '-987.6'"
+            emsg = "All unit tests passed."
+            flash(emsg)
+        if database:  # The admin requested a database test
+            sql = "INSERT INTO user_id VALUES ('testID', 'testUser', 'testPassword', '0', 'test@email.com');"
+            db.query(sql)
+            sql = "DELETE FROM user_id WHERE name LIKE 'testUser';"
+            db.query(sql)
+            emsg = "Database connection test passed."
+            flash(emsg)
+    return render_template('testing.html', form=form)
+
+    
 
 
 ###################################################
@@ -458,7 +491,7 @@ def floatTrunc(num, deg):
 # Given a location entry, check if it overlaps with any other location entries from the last 5 minutes
 def contactTrace(name, date, time, lat, lng):
     lat1, lng1 = float(floatTrunc(lat, 5)), float(floatTrunc(lng, 5))  # Truncate the latitude and longitude to 5 decimals and convert them to float
-    sql = "SELECT name, latitude, longitude FROM user_info WHERE time_to_sec(timediff('%s', time)) < 500 AND datediff('%s', date) LIKE 0 AND name NOT LIKE '%s'" % (time, date, name)
+    sql = "SELECT name, latitude, longitude FROM user_info WHERE time_to_sec(timediff('%s', time)) < 500 AND datediff('%s', date) LIKE 0 AND name NOT LIKE '%s';" % (time, date, name)
     results = db.get(sql)  # Get every entry from the last 5 minutes
     contacts = []
     for entry in results:  # For every location entry added in the last 5 minutes
@@ -468,7 +501,7 @@ def contactTrace(name, date, time, lat, lng):
             contacts.append(entry[0])  # If the users were within 7.283 feet, count that as a contact
     saltLoc = salt(lat, lng)  # Salt the submitted user location
     for contact in contacts:  # For every contact from the last 5 minutes
-        sql = "INSERT INTO contacts VALUES ('%s', '%s', '%s', '%s', '%s', '%s')" % (name, contact, date, time, saltLoc[0], saltLoc[1])
+        sql = "INSERT INTO contacts VALUES ('%s', '%s', '%s', '%s', '%s', '%s');" % (name, contact, date, time, saltLoc[0], saltLoc[1])
         db.query(sql)  # Add it to the 'contacts' table in the database
     return
 
