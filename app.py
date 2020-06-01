@@ -8,13 +8,14 @@ import sys
 import MySQLdb.cursors
 import smtplib, ssl
 import cred
+import datetime as dt
 from flask import Flask, request, Response, redirect, flash, render_template, url_for
 from flask_login import LoginManager, UserMixin, current_user, login_required, logout_user, login_user
 from flask_wtf.form import FlaskForm
 from werkzeug.security import check_password_hash, generate_password_hash
 from wtforms import PasswordField, BooleanField, StringField, SubmitField
 from wtforms.validators import DataRequired
-from datetime import *
+# from datetime import *
 
 
 ###################################################
@@ -301,19 +302,16 @@ def send():
     """
     If the newly received location and the newest entry in the database are within a meter, calculate the time difference 
     between the newly received entry and the most recent entry in the database from that particular user. Since the time 
-    sent from the website is a string and the time in the database is a timedelta, the time from the website is converted to 
-    a datetime and the two are subtracted and then added to the time at loc. Otherwise location is different so time_at is 0 
+    sent from the website is a string and the time in the database is a timedelta, the time from the database is converted to 
+    a string and the two are subtracted and then added to the time at loc. Otherwise location is different so time_at is 0 
     """
-    if abs(float(pastLat) - float(lati)) <= .00001 and abs(float(pastLng) - float(longi)) <= .00001:
-        inter_time = time[0:2]+time[3:5] + time[6:8]  # How to parse colon datetimes https://stackoverflow.com/questions/30999230/how-to-parse-timezone-with-colon
-        data_dt = datetime.strptime(inter_time, '%H%M%S').time()
-        past_time = (datetime.min + past[3]).time()
-
-        difference = datetime.combine(datetime.today(), data_dt) - datetime.combine(datetime.today(), past_time)  # Concept for difference based on https://stackoverflow.com/questions/9578906/easiest-way-to-combine-date-and-time-strings-to-single-datetime-object-using-pyt
-        print(difference.total_seconds() % 3600)
-
-        # Timedelta to minutes from https://stackoverflow.com/questions/14190045/how-do-i-convert-datetime-timedelta-to-minutes-hours-in-python/43965102
-        time_at = (difference.seconds % 3600)/60  # Make it a difference between date's time and past's time
+    if abs(float(pastLat) - float(lati)) <= .00001 and abs(float(pastLng) - float(longi)) <= .00001:  # There could be some redundant datetime conversions in here
+        curDate, pastDate = date.split('-'), past[2].strftime("%Y-%m-%d").split('-')  # Get the current and past date as lists of strings
+        curTime, pastTime = time.split(':'), str(past[3]).split(':')  # Get the current and past time as lists of strings
+        cur = dt.datetime(int(curDate[0]), int(curDate[1]), int(curDate[2]), int(curTime[0]), int(curTime[1]), int(curTime[2]))  # Convert current time to a datetime object
+        past = dt.datetime(int(pastDate[0]), int(pastDate[1]), int(pastDate[2]), int(pastTime[0]), int(pastTime[1]), int(pastTime[2]))  # Convert past time to a datetime object
+        # https://stackoverflow.com/questions/4362491/how-do-i-check-the-difference-in-seconds-between-two-dates
+        time_at = int((cur-past).total_seconds())/60  # Get the difference between current and past time in seconds and divide by 60 to get the difference in minutes
         sql = "UPDATE user_info SET time_at_location = '%s' WHERE name LIKE '%s' ORDER BY date DESC, time DESC LIMIT 1;" % (time_at, current_user.username)
         db.query(sql)  # Update time_at_location for the previous entry
     else:  # The user moved more than a meter
@@ -334,16 +332,11 @@ def send():
 def report():
     form = ReportForm()
     if form.validate_on_submit():  # Checks to see if a valid form is received from report.html
-        if not form.verify.data:
+        if not form.verify.data:  # The user didn't check the verification box
             emsg = "Please check the verification box before submitting."
             flash(emsg)
             return render_template('report.html', form=form)
-        # username = form.username.data.lower()
-        # infected = get_user(username)  # Get the User() object for the given username
-        # if not infected:  # There is no existing user with the given username
-        #     emsg = "No user found. Check that you spelled the username correctly and try again."
-        #     flash(emsg)
-        #     return render_template('report.html', form=form)
+
         username = current_user.username
         infected = get_user(username)
 
