@@ -288,7 +288,7 @@ def send():
 
     pastLat = pastLng = 0
     if results is ():  # If no entries are found in the database (for new users)
-        past = (0, 0, datetime.today().date(), timedelta(0, 86400), 0) # Create dummy location
+        past = (0, 0, dt.datetime.today().date(), dt.timedelta(0, 86400), 0) # Create dummy location
     else:
         past = results[-1]  # Select most recent entry
         loc = unsalt(past[0], past[1])
