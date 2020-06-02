@@ -2,15 +2,15 @@
 
 
 Having some trouble with flask_mysqldb installing it with pip. What worked was a virtualenv, cd into this directory, then run 'source flask/bin/activate', and you should be able to follow the instructions below to see it on local. Pythonanywhere does all this automatically so we won't need this 'flask' virtualenv folder in the end
-Milestone Tracker found here:
 
+Milestone Tracker found here:
 https://docs.google.com/spreadsheets/d/1UgTwjB1bLBwDpTaYrwLUO0qzv2_BkzqaAr1Bh0nO0sg/edit#gid=0
 
 Project Plan/SDS/SRS found here:
 
+Project Plan: https://docs.google.com/document/d/1MXDpCqgAiuUsI3GoxerujwcJ5tsHfwevpW2N1sic-Qw/edit?usp=sharing
 SDS: https://docs.google.com/document/d/1p3Fr6fO296uCtPrBr_MA0mEBENQfpP9JGfEq4bCBhXA/edit?usp=sharing
-
-https://docs.google.com/document/d/1COCH7NGrHofZ6tpbX0TE20YhkqZaNYpZ5j5HW55eluQ/edit
+SRS: https://docs.google.com/document/d/1COCH7NGrHofZ6tpbX0TE20YhkqZaNYpZ5j5HW55eluQ/edit
 
 README.txt    
 https://docs.google.com/document/d/1mvXEcXife00Moj2ohEgqNkGpkoBR7ecGb2YgInTgKf8/edit?usp=sharing
