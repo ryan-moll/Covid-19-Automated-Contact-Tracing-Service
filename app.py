@@ -168,6 +168,10 @@ def display():
     form = DisplayForm()
     if form.validate_on_submit():  # Checks to see if a valid form is received from display.html
         username = form.username.data.lower()
+        if username != current_user.username:
+            emsg = "You cannot access other users location data. Please enter your own username and try again."
+            flash(emsg)
+            return render_template('display.html', form=form)
         tab = form.tab.data
         # Pulls all location entries tied the submitted username from the database
         sql = "SELECT latitude, longitude, date, time, time_at_location FROM user_info WHERE name LIKE '%s';" % (username)
